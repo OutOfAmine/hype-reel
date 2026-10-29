@@ -19,7 +19,7 @@ Four unofficial demos made with the skill from the products' public websites (no
 | [![Supabase demo](docs/supabase.gif)](videos/supabase.mp4) | [![Cal.com demo](docs/calcom.gif)](videos/calcom.mp4) | [![Resend demo](docs/resend.gif)](videos/resend.mp4) | [![Linear demo](docs/linear.gif)](videos/linear.mp4) |
 | [▶ MP4](videos/supabase.mp4) · [storyboard](examples/supabase/reel.json) | [▶ MP4](videos/calcom.mp4) · [storyboard](examples/calcom/reel.json) | [▶ MP4](videos/resend.mp4) · [storyboard](examples/resend/reel.json) | [▶ MP4](videos/linear.mp4) · [storyboard](examples/linear/reel.json) |
 
-The full 1080x1920 MP4s are in [`videos/`](videos).
+Each GIF is the whole demo; the full 1080x1920 MP4s are in [`videos/`](videos).
 
 ## Install
 
