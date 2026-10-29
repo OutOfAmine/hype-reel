@@ -1,0 +1,20 @@
+{
+  "title": "Supabase — hype-reel demo",
+  "format": "9:16",
+  "theme": { "bg": "#060a08", "accent": "#1f9d63", "accent2": "#3ecf8e", "hot": "#00e0ff", "muted": "#a7c4b5" },
+  "scenes": [
+    { "type": "slam", "dur": 2.8, "lines": ["Build in a *weekend*.", "Scale to *millions*."], "say": "Build in a weekend. Scale to millions." },
+    { "type": "screen", "dur": 6.2, "image": "shots/home.jpg", "device": "browser", "url": "supabase.com",
+      "focus": [
+        { "x": 0.122, "y": 0.503, "w": 0.373, "h": 0.44, "label": "A full Postgres database", "at": 1.6 },
+        { "x": 0.504, "y": 0.503, "w": 0.182, "h": 0.44, "label": "Auth with Row Level Security", "at": 3.1 },
+        { "x": 0.695, "y": 0.503, "w": 0.182, "h": 0.44, "label": "Edge Functions", "at": 4.6 }
+      ], "say": "Every project is a full Postgres database, with auth and edge functions built in." },
+    { "type": "orbit", "dur": 4.4, "center": "supabase", "items": ["🐘 Postgres", "🔐 Auth", "🗂️ Storage", "⚡ Realtime", "🌍 Edge", "🧠 Vector", "🔌 APIs"], "say": "Storage, realtime, vectors. One platform." },
+    { "type": "exploded", "dur": 4.2, "image": "shots/sec0.jpg", "labels": [{ "slice": 1, "text": "Best of breed" }, { "slice": 3, "text": "Integrated" }], "say": "Use one of them, or all of them." },
+    { "type": "counter", "dur": 3.2, "value": 114.3, "decimals": 1, "prefix": "★", "suffix": "K", "label": "GitHub stars", "say": "Open source, with over a hundred thousand stars." },
+    { "type": "tunnel", "dur": 4.4, "images": ["shots/sec1.jpg", "shots/sec2.jpg", "shots/sec3.jpg", "shots/sec4.jpg", "shots/sec5.jpg", "shots/home.jpg"], "title": "Open source from *day one*", "say": "Templates, integrations, a whole community." },
+    { "type": "fan", "dur": 3.6, "images": ["shots/m1000.jpg", "shots/home-m.jpg", "shots/m2200.jpg"], "say": "Start your project in minutes." },
+    { "type": "end", "dur": 3.6, "title": "Start your *project*", "cta": "supabase.com", "handle": "Unofficial demo · made with hype-reel", "say": "Start your project." }
+  ]
+}

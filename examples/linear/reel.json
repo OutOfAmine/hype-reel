@@ -1,0 +1,19 @@
+{
+  "title": "Linear — hype-reel demo",
+  "format": "9:16",
+  "theme": { "bg": "#08090a", "accent": "#5e6ad2", "accent2": "#c7cbff", "hot": "#f2994a", "muted": "#9ca0b0" },
+  "scenes": [
+    { "type": "slam", "dur": 2.6, "lines": ["For *teams*.", "And *agents*."], "say": "Built for teams. And agents." },
+    { "type": "screen", "dur": 6.4, "image": "shots/home.jpg", "device": "browser", "url": "linear.app",
+      "focus": [
+        { "x": 0.054, "y": 0.307, "w": 0.546, "h": 0.138, "label": "Plan and build products", "at": 1.5 },
+        { "x": 0.259, "y": 0.716, "w": 0.363, "h": 0.084, "label": "Issues that move fast", "at": 3.1 },
+        { "x": 0.667, "y": 0.787, "w": 0.278, "h": 0.213, "label": "An agent opens the PR", "at": 4.7 }
+      ], "say": "Plan the work, track the issue, and let an agent open the pull request." },
+    { "type": "exploded", "dur": 4.2, "image": "shots/home.jpg", "labels": [{ "slice": 2, "text": "Purpose-built" }, { "slice": 3, "text": "Designed for speed" }], "say": "Purpose-built. Designed for speed." },
+    { "type": "orbit", "dur": 4.2, "center": "Linear", "items": ["📥 Intake", "🗺️ Planning", "🛠️ Building", "🤖 Agents", "🔌 Integrations", "📈 Monitoring"], "say": "Intake, planning, agents, integrations." },
+    { "type": "wall", "dur": 4, "images": ["shots/sec0.jpg", "shots/sec1.jpg", "shots/sec2.jpg", "shots/sec3.jpg", "shots/sec4.jpg", "shots/sec5.jpg"], "title": "A new species of *product tool*", "say": "A new species of product tool." },
+    { "type": "fan", "dur": 3.6, "images": ["shots/m1000.jpg", "shots/home-m.jpg", "shots/m2200.jpg"], "say": "On desktop and on your phone." },
+    { "type": "end", "dur": 3.6, "title": "Designed for the *AI era*", "cta": "linear.app", "handle": "Unofficial demo · made with hype-reel", "say": "Designed for the AI era." }
+  ]
+}

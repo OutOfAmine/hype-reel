@@ -1,0 +1,15 @@
+{
+  "name": "hype-reel",
+  "version": "1.0.0",
+  "description": "Claude Code skill: turn your product's real screens into an insane Framer Motion promo reel (vertical MP4 + shareable page).",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "check": "node --check scripts/capture.mjs && node --check scripts/render.mjs && node --check scripts/chrome.mjs && python scripts/build.py examples/supabase/reel.json"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0",
+    "puppeteer-core": "^23.11.1"
+  }
+}

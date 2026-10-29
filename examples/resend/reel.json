@@ -1,0 +1,18 @@
+{
+  "title": "Resend — hype-reel demo",
+  "format": "9:16",
+  "theme": { "bg": "#000000", "accent": "#5b5bd6", "accent2": "#e4e4e7", "hot": "#a78bfa", "muted": "#a1a1aa" },
+  "scenes": [
+    { "type": "mask", "dur": 3.4, "word": "EMAIL", "image": "shots/home.jpg", "dive": 1.4, "say": "Email, for developers." },
+    { "type": "slam", "dur": 2.6, "lines": ["~Spam folder~", "*Inbox.*"], "say": "Not the spam folder. The inbox." },
+    { "type": "screen", "dur": 5.6, "image": "shots/home.jpg", "device": "browser", "url": "resend.com",
+      "focus": [
+        { "x": 0.116, "y": 0.364, "w": 0.281, "h": 0.221, "label": "Built for developers", "at": 1.6 },
+        { "x": 0.116, "y": 0.696, "w": 0.09, "h": 0.051, "label": "Get started", "at": 3.6 }
+      ], "say": "Send transactional and marketing emails at scale." },
+    { "type": "prompt", "dur": 4.6, "app": "Terminal", "prompt": "npm install resend", "result": ["Send from Node, Python, Go…", "React Email templates", "Webhooks for every event"], "say": "Install the SDK and send from your favorite language." },
+    { "type": "exploded", "dur": 4.2, "image": "shots/sec1.jpg", "labels": [{ "slice": 1, "text": "Integrate tonight" }], "say": "Integrate it tonight." },
+    { "type": "tunnel", "dur": 4.4, "images": ["shots/sec2.jpg", "shots/sec3.jpg", "shots/sec4.jpg", "shots/sec5.jpg", "shots/sec0.jpg", "shots/home.jpg"], "title": "Go *beyond* editing", "say": "A delightful editor, audiences, analytics." },
+    { "type": "end", "dur": 3.6, "title": "Email for *developers*", "cta": "resend.com", "handle": "Unofficial demo · made with hype-reel", "say": "Email for developers." }
+  ]
+}

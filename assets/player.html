@@ -1,0 +1,619 @@
+<!--DOC--><!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><!--/DOC-->
+<title>__TITLE__</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@700;900&display=block" rel="stylesheet">
+<style>
+:root { --bg:#06050b; --fg:#ffffff; --accent:#8b5cff; --accent2:#22e3ff; --hot:#ff2e6e; --muted:#a9a6c4; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#06050b; --fg:#ffffff; } }
+:root[data-theme="dark"] { --bg:#06050b; --fg:#ffffff; }
+html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+body { font-family: Inter, system-ui, sans-serif; color: var(--fg); -webkit-font-smoothing: antialiased; }
+#root { position:fixed; inset:0; display:grid; place-items:center; }
+.stage { position:relative; overflow:hidden; background:var(--bg); flex:none; transform-origin:center; }
+.abs { position:absolute; }
+.fill { position:absolute; inset:0; }
+.center { position:absolute; left:50%; top:50%; }
+.persp { perspective: 1600px; perspective-origin: 50% 45%; }
+.p3d { transform-style: preserve-3d; }
+.disp { font-family: Unbounded, Inter, sans-serif; font-weight:900; letter-spacing:-0.02em; text-transform:uppercase; line-height:.98; }
+.acc { color: var(--accent2); }
+.word { display:inline-block; white-space:nowrap; will-change: transform, opacity, filter; }
+.strike { position:absolute; left:-4%; right:-4%; top:52%; height:.11em; background:var(--hot); border-radius:9px; transform-origin:left center; }
+.glass { background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.04)); border:1px solid rgba(255,255,255,.18); backdrop-filter: blur(14px); }
+.chip { border-radius:999px; padding:.45em 1em; font-weight:800; white-space:nowrap; }
+.shot { display:block; width:100%; height:auto; user-select:none; pointer-events:none; }
+.cap { position:absolute; left:0; right:0; text-align:center; font-weight:900; font-family: Inter, sans-serif; letter-spacing:-.01em; }
+.cap .w { display:inline-block; margin: 0 .16em; padding: .02em .16em; border-radius:.18em; text-shadow: 0 .06em 0 rgba(0,0,0,.55), 0 0 .5em rgba(0,0,0,.5); }
+.ui { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:8px; z-index:9; transition: opacity .3s; }
+.ui button { font: 700 13px Inter, sans-serif; color:#fff; background:rgba(20,18,30,.75); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:9px 14px; cursor:pointer; backdrop-filter: blur(8px); }
+.fail { color:#fff; font: 600 16px Inter, sans-serif; padding: 24px; text-align:center; }
+</style><!--DOC-->
+</head>
+<body><!--/DOC-->
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/framer-motion@11.11.17/dist/framer-motion.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+const STORY = /*__STORY__*/null;
+
+(() => {
+const root = document.getElementById('root');
+if (!window.React || !window.ReactDOM || !window.Motion || !window.htm) { root.innerHTML = '<p class="fail">This reel needs an internet connection to load its animation libraries.</p>'; return; }
+if (!STORY || !Array.isArray(STORY.scenes) || !STORY.scenes.length) { root.innerHTML = '<p class="fail">No storyboard.</p>'; return; }
+
+const { useState, useEffect, useLayoutEffect, useRef, useContext, createContext } = React;
+const { motion, useMotionValue } = Motion;
+const html = htm.bind(React.createElement);
+const RENDER = /[?&]render=1/.test(location.search);
+
+/* ---------- format + theme ---------- */
+const FORMATS = { '9:16': [1080, 1920], '16:9': [1920, 1080], '1:1': [1080, 1080], '4:5': [1080, 1350] };
+const [W, H] = FORMATS[STORY.format || '9:16'] || FORMATS['9:16'];
+const VERT = H > W * 1.2;
+const U = Math.min(W, H) / 1080;
+const TH = STORY.theme || {};
+for (const k of ['bg', 'fg', 'accent', 'accent2', 'hot', 'muted']) if (TH[k]) document.documentElement.style.setProperty('--' + k, TH[k]);
+const C = k => getComputedStyle(document.documentElement).getPropertyValue('--' + k).trim();
+document.title = STORY.title || document.title;
+// where scenes may put their main content; the bottom third is kept for captions + the app's own buttons
+const SAFE = VERT ? { top: 150, bottom: Math.round(H * 0.675) } : { top: 70, bottom: H - 190 };
+const CX = W / 2, CY = (SAFE.top + SAFE.bottom) / 2, CH = SAFE.bottom - SAFE.top;
+
+/* ---------- math: everything is a pure function of time, so every frame can be rendered exactly ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, p) => a + (b - a) * p;
+const prog = (t, a, b) => clamp((t - a) / (b - a));
+const E = {
+  out: Motion.easeOut || (p => 1 - Math.pow(1 - p, 3)),
+  inOut: Motion.easeInOut || (p => p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2),
+  back: Motion.backOut || (p => 1 + 2.7 * Math.pow(p - 1, 3) + 1.7 * Math.pow(p - 1, 2)),
+  circ: Motion.circOut || (p => Math.sqrt(1 - Math.pow(p - 1, 2))),
+  expo: p => p >= 1 ? 1 : 1 - Math.pow(2, -10 * p),
+};
+// damped spring 0 -> 1 (overshoots when underdamped), analytic so it can be sampled at any t
+function spring(t, k = 170, c = 16) {
+  if (t <= 0) return 0;
+  const w0 = Math.sqrt(k), z = c / (2 * Math.sqrt(k));
+  if (z < 1) { const wd = w0 * Math.sqrt(1 - z * z); return 1 - Math.exp(-z * w0 * t) * (Math.cos(wd * t) + (z * w0 / wd) * Math.sin(wd * t)); }
+  return 1 - Math.exp(-w0 * t) * (1 + w0 * t);
+}
+const sp = (t, d = 0, k, c) => spring(t - d, k, c);
+const rnd = i => { const x = Math.sin(i * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+function shake(t, hits, amp = 18, decay = 9) {
+  let x = 0, y = 0, r = 0;
+  for (const h of hits) { const d = t - h; if (d >= 0 && d < 1.2) { const e = Math.exp(-d * decay) * amp; x += Math.sin(d * 92 + h * 7) * e; y += Math.cos(d * 71 + h * 3) * e; r += Math.sin(d * 63 + h) * e * .06; } }
+  return { x, y, r };
+}
+const rgbSplit = (e, px = 10) => e > .01 ? `${e * px}px 0 0 rgba(255,46,110,.85), ${-e * px}px 0 0 rgba(34,227,255,.85)` : 'none';
+const px = v => v.toFixed(2) + 'px';
+
+/* ---------- *accent*  ~struck~ markup ---------- */
+function tokens(s) {
+  return [...String(s || '').matchAll(/([*~])([^*~]+)\1([^\s*~]*)|\S+/g)].flatMap(m => {
+    if (!m[1]) return [{ text: m[0] }];
+    const ws = m[2].split(/\s+/);
+    return ws.map((w, i) => ({ text: w + (i === ws.length - 1 ? m[3] : ''), acc: m[1] === '*', strike: m[1] === '~' }));
+  });
+}
+const plain = s => String(s || '').replace(/[*~]/g, '');
+
+/* ---------- timeline ---------- */
+const DUR = { tunnel: 4.4, mask: 3.6, slam: 2.6, screen: 6, exploded: 4.5, wall: 4, orbit: 4.5, wipe: 4.4, counter: 3.4, fan: 4, prompt: 5, end: 3.6 };
+const TRANS = ['zoom', 'whip', 'glitch', 'flash', 'drop'];
+let acc = 0;
+const scenes = STORY.scenes.map((s, i) => {
+  const d = s.dur || DUR[s.type] || 4;
+  const sc = { ...s, i, start: acc, dur: d, in: s.in || (i === 0 ? 'flash' : TRANS[(i - 1) % TRANS.length]) };
+  acc += d; return sc;
+});
+const TOTAL = acc;
+const sceneAt = t => { for (const s of scenes) if (t < s.start + s.dur) return s.i; return scenes.length - 1; };
+
+/* ---------- A: an element whose style is a function of time, driven by a Framer Motion value ---------- */
+const Ctx = createContext(null);
+function A({ f, as = 'div', children, ...rest }) {
+  const { T, t0 } = useContext(Ctx);
+  const ref = useRef(null), fr = useRef(f);
+  fr.current = f;
+  useLayoutEffect(() => {
+    const el = ref.current;
+    const apply = v => { const s = fr.current(v - t0); for (const k in s) { if (k === '_text') { if (el.textContent !== s._text) el.textContent = s._text; } else el.style[k] = s[k]; } };
+    apply(T.get());
+    return T.on('change', apply);
+  }, [T, t0]);
+  return React.createElement(as, { ref, ...rest }, children);
+}
+const At = ({ t0, children }) => { const c = useContext(Ctx); return html`<${Ctx.Provider} value=${{ T: c.T, t0 }}>${children}<//>`; };
+
+/* ---------- shared pieces ---------- */
+function Headline({ text, y = SAFE.top + 10, size = 74, delay = 0 }) {
+  const toks = tokens(text);
+  return html`<div className="abs disp" style=${{ left: 60 * U, right: 60 * U, top: y, textAlign: 'center', fontSize: size * U }}>
+    ${toks.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ marginRight: '.28em', position: 'relative' }}
+      f=${t => { const d = delay + i * .07, p = sp(t, d, 260, 20); return { opacity: clamp((t - d) * 7), transform: `translateY(${px((1 - p) * 60)}) rotate(${((1 - p) * (rnd(i) - .5) * 14).toFixed(2)}deg)`, filter: `blur(${px(Math.max(0, 1 - (t - d) / .2) * 10)})` }; }}>${tk.text}${tk.strike && html`<${Strike} at=${delay + i * .07 + .45} />`}<//>`)}
+  </div>`;
+}
+const Strike = ({ at }) => html`<${A} className="strike" f=${t => ({ transform: `scaleX(${E.out(prog(t, at, at + .25))})` })} />`;
+
+function Phone({ w, h, children, glow = true }) {
+  const r = 64 * w / 480;
+  return html`<div style=${{ position: 'relative', width: w, height: h, borderRadius: r, background: '#0b0b10', padding: 14 * w / 480, boxSizing: 'border-box', boxShadow: `0 0 0 2px #2a2838, 0 40px 120px rgba(0,0,0,.6)${glow ? ', 0 0 140px -20px ' + C('accent') : ''}` }}>
+    <div style=${{ position: 'relative', width: '100%', height: '100%', borderRadius: r - 12 * w / 480, overflow: 'hidden', background: '#000' }}>${children}
+      <div style=${{ position: 'absolute', top: 12 * w / 480, left: '50%', width: 120 * w / 480, height: 34 * w / 480, marginLeft: -60 * w / 480, borderRadius: 99, background: '#000' }} /></div></div>`;
+}
+const BAR = 58;
+function Browser({ w, h, url, children }) {
+  return html`<div style=${{ position: 'relative', width: w, height: h, borderRadius: 26, overflow: 'hidden', background: '#111018', boxShadow: `0 0 0 1.5px rgba(255,255,255,.16), 0 50px 140px rgba(0,0,0,.65), 0 0 160px -30px ${C('accent')}` }}>
+    <div style=${{ height: BAR, display: 'flex', alignItems: 'center', gap: 10, padding: '0 20px', background: 'linear-gradient(#1d1b27,#16141e)', borderBottom: '1px solid rgba(255,255,255,.08)' }}>
+      ${['#ff5f57', '#febc2e', '#28c840'].map(c => html`<i key=${c} style=${{ width: 14, height: 14, borderRadius: 9, background: c }} />`)}
+      <div style=${{ flex: 1, marginLeft: 14, height: 32, borderRadius: 10, background: 'rgba(255,255,255,.07)', color: '#c9c6dd', font: '600 17px Inter', display: 'flex', alignItems: 'center', paddingLeft: 16, overflow: 'hidden', whiteSpace: 'nowrap' }}>🔒  ${url || ''}</div></div>
+    <div style=${{ position: 'relative', height: h - BAR, overflow: 'hidden' }}>${children}</div></div>`;
+}
+const Cursor = () => html`<svg width="54" height="54" viewBox="0 0 24 24" style=${{ filter: 'drop-shadow(0 6px 10px rgba(0,0,0,.5))' }}><path d="M4 2.5 19.5 12l-7 1.6L9 20.5z" fill="#fff" stroke="#000" stroke-width="1.3" stroke-linejoin="round"/></svg>`;
+
+function Burst({ at, n = 34, x = CX, y = CY, power = 1, seed = 1 }) {
+  const cols = [C('accent'), C('accent2'), C('hot'), '#fff'];
+  return html`<div className="fill" style=${{ pointerEvents: 'none' }}>${Array.from({ length: n }, (_, i) => {
+    const a = rnd(i * 3 + seed) * Math.PI * 2, v = (500 + rnd(i * 7 + seed) * 1100) * power * U, s = (8 + rnd(i * 5 + seed) * 16) * U;
+    return html`<${A} key=${i} className="abs" style=${{ left: x, top: y, width: s, height: s, borderRadius: i % 3 ? 99 : 3, background: cols[i % 4] }}
+      f=${t => { const d = t - at; if (d < 0 || d > 1.6) return { opacity: 0 }; const dx = Math.cos(a) * v * d * Math.exp(-d * 1.2), dy = Math.sin(a) * v * d * Math.exp(-d * 1.2) + 900 * d * d * U; return { opacity: clamp(1.6 - d * 1.2), transform: `translate(${px(dx)},${px(dy)}) rotate(${(d * 400 * (rnd(i) - .5)).toFixed(1)}deg)` }; }} />`;
+  })}</div>`;
+}
+function Rings({ at, x = CX, y = CY, n = 3, size = 300, every = 0 }) {
+  return html`<div className="fill" style=${{ pointerEvents: 'none' }}>${Array.from({ length: n }, (_, i) => html`<${A} key=${i} className="abs" style=${{ left: x - size / 2, top: y - size / 2, width: size, height: size, borderRadius: '50%', border: `${4 * U}px solid ${i % 2 ? C('accent2') : C('accent')}` }}
+    f=${t => { let d = t - at - i * .12; if (every) d = ((d % every) + every) % every; if (d < 0 || d > 1.1) return { opacity: 0 }; return { opacity: (1 - d / 1.1) * .9, transform: `scale(${(.2 + E.out(d / 1.1) * 3).toFixed(3)})` }; }} />`)}</div>`;
+}
+
+/* ---------- scenes ---------- */
+function Slam({ sc }) {
+  const lines = sc.lines || [sc.text || ''];
+  const gap = sc.gap || .3;
+  let k = 0; const hits = [];
+  const rows = lines.map((ln, li) => tokens(ln).map(tk => { const d = .12 + k * gap + li * .12; hits.push(d); k++; return { ...tk, d }; }));
+  const longest = Math.max(...lines.map(l => plain(l).length));
+  const size = Math.min(160, (VERT ? 960 : 1500) / (longest * .66)) * U;
+  return html`<div className="fill">
+    <${A} className="abs" style=${{ left: CX - H, top: CY - H, width: 2 * H, height: 2 * H, background: `repeating-conic-gradient(from 0deg, ${C('accent')}22 0deg 6deg, transparent 6deg 18deg)`, borderRadius: '50%' }}
+      f=${t => ({ transform: `rotate(${(t * 14).toFixed(2)}deg) scale(${(1 + .08 * Math.sin(t * 3)).toFixed(3)})`, opacity: clamp(t * 2) * .9 })} />
+    <${A} className="fill" f=${t => { const s = shake(t, hits, 20 * U); return { transform: `translate(${px(s.x)},${px(s.y)}) rotate(${s.r.toFixed(2)}deg)` }; }}>
+      <div className="abs disp" style=${{ left: 40, right: 40, top: CY, transform: 'translateY(-50%)', textAlign: 'center', fontSize: size }}>
+        ${rows.map((row, ri) => html`<div key=${ri} style=${{ margin: '.08em 0' }}>${row.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ margin: '0 .14em', position: 'relative' }}
+          f=${t => { const p = sp(t, tk.d, 520, 24), e = t > tk.d ? Math.exp(-(t - tk.d) * 9) : 0; return { opacity: clamp((t - tk.d) * 10) * (tk.strike && t > tk.d + .55 ? .45 : 1), transform: `scale(${lerp(3.4, 1, p).toFixed(3)}) rotate(${((1 - p) * (rnd(ri * 9 + i) - .5) * 16).toFixed(2)}deg)`, filter: `blur(${px(Math.max(0, 1 - (t - tk.d) / .16) * 18)})`, textShadow: rgbSplit(e, 14 * U) }; }}>${tk.text}${tk.strike && html`<${Strike} at=${tk.d + .4} />`}<//>`)}</div>`)}
+      </div>
+    <//>
+    <${A} className="fill" style=${{ background: '#fff', pointerEvents: 'none' }} f=${t => ({ opacity: Math.min(.35, hits.reduce((s, h) => s + (t > h ? Math.exp(-(t - h) * 16) * .16 : 0), 0)) })} />
+  </div>`;
+}
+
+// camera path for a screen scene: overview, then a dolly into each focus rect, then back out
+function screenCam(sc, geo) {
+  const { cw, ch, imgH, offY } = geo;
+  const maxScroll = Math.max(0, imgH - ch);
+  const fs = (sc.focus || []).map((f, i, arr) => {
+    const at = f.at ?? (1.6 + i * Math.max(1.4, (sc.dur - 2.4) / arr.length));
+    const scroll = clamp((f.y + f.h / 2) * imgH - ch / 2, 0, maxScroll);
+    const z = clamp((cw * (f.zoom ? 1 / f.zoom : .62)) / Math.max(1, f.w * cw), 1.25, 2.9);
+    return { ...f, at, z, scroll, fx: (f.x + f.w / 2) * cw - cw / 2, fy: offY + (f.y + f.h / 2) * imgH - scroll - ch / 2 };
+  });
+  const idleScroll = (sc.scroll || 0) * maxScroll;
+  const ov = t => ({ z: 1, fx: 0, fy: 0, scroll: idleScroll * E.inOut(prog(t, .8, sc.dur - .3)) });
+  const keys = [];
+  fs.forEach((f, i) => {
+    const prevEnd = i ? keys[keys.length - 1].t1 : 1.0;
+    const moveIn = Math.max(prevEnd, f.at - .75), hold = Math.min(fs[i + 1] ? fs[i + 1].at - .8 : sc.dur - .7, f.at + (f.hold || 1.6));
+    keys.push({ f, t0: moveIn, t1: Math.max(moveIn + .1, f.at - .12), hold: Math.max(f.at, hold) });
+  });
+  return t => {
+    let cur = ov(t);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i], st = { z: k.f.z, fx: k.f.fx, fy: k.f.fy, scroll: k.f.scroll };
+      const from = i && keys[i - 1].hold >= k.t0 - .05 ? { z: keys[i - 1].f.z, fx: keys[i - 1].f.fx, fy: keys[i - 1].f.fy, scroll: keys[i - 1].f.scroll } : ov(k.t0);
+      if (t >= k.t0) {
+        const p = E.inOut(prog(t, k.t0, k.t1));
+        cur = { z: lerp(from.z, st.z, p), fx: lerp(from.fx, st.fx, p), fy: lerp(from.fy, st.fy, p), scroll: lerp(from.scroll, st.scroll, p) };
+        const nextStarts = keys[i + 1] && keys[i + 1].t0 <= k.hold + .05;
+        if (t > k.hold && !nextStarts) { const q = E.inOut(prog(t, k.hold, k.hold + .6)), o = ov(t); cur = { z: lerp(st.z, o.z, q), fx: lerp(st.fx, o.fx, q), fy: lerp(st.fy, o.fy, q), scroll: lerp(st.scroll, o.scroll, q) }; }
+      }
+    }
+    return cur;
+  };
+}
+
+function Screen({ sc }) {
+  const img = sc.image;
+  const dev = sc.device || (img.w / img.h < .8 ? 'phone' : 'browser');
+  let fw, fh, cw, ch, offY = 0;
+  const maxH = CH * (sc.title ? .86 : 1);
+  if (dev === 'phone') { fh = Math.min(maxH, 1180 * U); fw = fh * .47; cw = fw - 28 * fw / 480; ch = fh - 28 * fw / 480; }
+  else if (dev === 'browser') { fw = Math.min(W - 60 * U, VERT ? 1000 * U : 1500 * U); cw = fw; const full = cw * img.h / img.w; ch = Math.min(maxH - BAR, full); fh = ch + BAR; offY = BAR / 2; }
+  else { fw = Math.min(W - 80 * U, 960 * U); cw = fw; ch = Math.min(maxH, cw * img.h / img.w); fh = ch; }
+  const imgH = cw * img.h / img.w;
+  const geo = { cw, ch, imgH, offY };
+  const cam = screenCam(sc, geo);
+  const dcx = CX, dcy = sc.title ? CY + CH * .07 : CY;
+  const fs = (sc.focus || []).map((f, i, arr) => ({ ...f, at: f.at ?? (1.6 + i * Math.max(1.4, (sc.dur - 2.4) / arr.length)) }));
+  const tilt = t => { const c = cam(t); return clamp(1 - (c.z - 1) / .6); };
+  // a point of the screenshot (fractions) -> stage pixels at time t
+  const toStage = (fx, fy, t) => { const c = cam(t); const rx = fx * cw - cw / 2, ry = offY + fy * imgH - c.scroll - ch / 2; return [dcx + c.z * (rx - c.fx), dcy + c.z * (ry - c.fy)]; };
+  const cursorAt = t => {
+    if (!fs.length) return null;
+    let i = fs.findIndex(f => t < f.at + .05); if (i < 0) i = fs.length - 1;
+    const f = fs[i], to = toStage(f.x + f.w / 2, f.y + f.h / 2, t);
+    const pf = fs[i - 1], from = pf ? toStage(pf.x + pf.w / 2, pf.y + pf.h / 2, t) : [W * .78, SAFE.bottom - 40];
+    const p = E.inOut(prog(t, f.at - .6, f.at - .08));
+    return [lerp(from[0], to[0], p) + Math.sin(p * Math.PI) * 60 * U, lerp(from[1], to[1], p) - Math.sin(p * Math.PI) * 40 * U];
+  };
+  const content = html`<${A} className="abs" style=${{ left: 0, top: 0, width: cw }} f=${t => ({ transform: `translateY(${px(-cam(t).scroll)})` })}>
+      <img className="shot" src=${img.src} style=${{ width: cw }} />
+      ${fs.map((f, i) => html`<${A} key=${i} className="abs" style=${{ left: f.x * cw, top: f.y * imgH, width: f.w * cw, height: f.h * imgH, borderRadius: 14, pointerEvents: 'none' }}
+        f=${t => { const on = prog(t, f.at - .1, f.at + .15), end = fs[i + 1] ? fs[i + 1].at - .5 : sc.dur; const off = 1 - prog(t, end - .3, end); const a = on * off, z = cam(t).z, pop = sp(t, f.at - .1, 380, 16);
+          return { opacity: a, transform: `scale(${lerp(1.25, 1, pop).toFixed(3)})`, border: `${(4 / z).toFixed(2)}px solid ${C('accent2')}`, boxShadow: `0 0 0 9999px rgba(4,3,10,${(.5 * a).toFixed(3)}), 0 0 ${px(30 / z)} ${C('accent2')}` }; }} />`)}
+    <//>
+    <${A} className="fill" style=${{ background: 'linear-gradient(105deg, transparent 35%, rgba(255,255,255,.22) 48%, transparent 60%)', pointerEvents: 'none', backgroundSize: '300% 100%' }}
+      f=${t => ({ backgroundPosition: `${(100 - E.inOut(prog(t, .7, 1.6)) * 100).toFixed(1)}% 0` })} />`;
+  const frame = dev === 'phone' ? html`<${Phone} w=${fw} h=${fh}>${content}<//>` : dev === 'browser' ? html`<${Browser} w=${fw} h=${fh} url=${sc.url}>${content}<//>`
+    : html`<div style=${{ position: 'relative', width: fw, height: fh, borderRadius: 22, overflow: 'hidden', boxShadow: '0 40px 120px rgba(0,0,0,.6)' }}>${content}</div>`;
+  return html`<div className="fill persp">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.2} />`}
+    <${A} className="abs" style=${{ left: dcx - fw / 2, top: dcy - fh / 2, width: fw, height: fh }}
+      f=${t => { const c = cam(t); return { transform: `translate(${px(-c.z * c.fx)},${px(-c.z * c.fy)}) scale(${c.z.toFixed(4)})` }; }}>
+      <${A} className="p3d" f=${t => { const p = sp(t, 0, 110, 15), q = tilt(t);
+        return { transform: `translate3d(0,${px((1 - p) * 700 * U)},${px((1 - p) * -1800)}) rotateX(${(lerp(62, 0, p) + q * (7 + 2 * Math.cos(t * .7))).toFixed(2)}deg) rotateY(${(lerp(-40, 0, p) + q * (-7 + 3 * Math.sin(t * .8))).toFixed(2)}deg) rotateZ(${(lerp(16, 0, p)).toFixed(2)}deg)` }; }}>${frame}<//>
+    <//>
+    ${fs.map((f, i) => html`<${A} key=${'l' + i} className="abs chip" style=${{ left: 0, top: 0, background: C('accent2'), color: '#04030a', fontSize: 34 * U, boxShadow: '0 12px 40px rgba(0,0,0,.45)' }}
+      f=${t => { const end = fs[i + 1] ? fs[i + 1].at - .5 : sc.dur; const p = sp(t, f.at + .05, 300, 15), a = clamp((t - f.at - .05) * 8) * (1 - prog(t, end - .3, end)); if (!f.label || a <= 0) return { opacity: 0 };
+        const [x, y] = toStage(f.x + f.w / 2, f.y + f.h, t); const below = y + 30 < SAFE.bottom - 40; const yy = below ? y + 26 : toStage(0, f.y, t)[1] - 90 * U;
+        return { opacity: a, transform: `translate(-50%,0) translate(${px(clamp(x, 220 * U, W - 220 * U))},${px(yy)}) scale(${lerp(.4, 1, p).toFixed(3)})`, _text: f.label }; }} />`)}
+    ${fs.length > 0 && html`<${A} className="abs" style=${{ left: -6, top: -4, pointerEvents: 'none' }}
+      f=${t => { const p = cursorAt(t); if (!p || t < .9) return { opacity: 0 }; const press = fs.reduce((s, f) => s + (Math.abs(t - f.at) < .12 ? 1 - Math.abs(t - f.at) / .12 : 0), 0);
+        return { opacity: clamp((t - .9) * 4), transform: `translate(${px(p[0])},${px(p[1])}) scale(${(1 - press * .22).toFixed(3)})` }; }}><${Cursor} /><//>`}
+    ${fs.map((f, i) => html`<${A} key=${'r' + i} className="abs" style=${{ left: 0, top: 0, width: 140 * U, height: 140 * U, marginLeft: -70 * U, marginTop: -70 * U, borderRadius: '50%', border: `${5 * U}px solid #fff`, pointerEvents: 'none' }}
+      f=${t => { const d = t - f.at; if (d < 0 || d > .6) return { opacity: 0 }; const p = cursorAt(f.at) || [0, 0]; return { opacity: 1 - d / .6, transform: `translate(${px(p[0])},${px(p[1])}) scale(${(.2 + E.out(d / .6) * 1.4).toFixed(3)})` }; }} />`)}
+  </div>`;
+}
+
+function Exploded({ sc }) {
+  const img = sc.image, n = sc.slices || 4;
+  const cw = Math.min(W * .78, VERT ? 860 * U : 1100 * U), fullH = cw * img.h / img.w, chh = Math.min(fullH, CH * .7), sh = chh / n;
+  const mid = (n - 1) / 2, collapse = sc.dur - 1.0;
+  const amt = t => sp(t, .9, 90, 11) * (1 - sp(t, collapse, 260, 17));
+  const labels = sc.labels || [];
+  return html`<div className="fill persp">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.15} />`}
+    <div className="abs persp" style=${{ left: CX - cw / 2, top: CY - chh / 2 + (sc.title ? CH * .06 : 0), width: cw, height: chh }}>
+      ${Array.from({ length: n }, (_, k) => { const lab = labels.find(l => l.slice === k);
+        // each slice carries the whole group transform itself (no nested preserve-3d: Chrome drops layers there)
+        return html`<${A} key=${k} className="abs" style=${{ left: 0, top: k * sh, width: cw, height: sh + .5, transformOrigin: `${cw / 2}px ${chh / 2 - k * sh}px`, borderRadius: k === 0 ? '22px 22px 0 0' : k === n - 1 ? '0 0 22px 22px' : 0 }}
+          f=${t => { const p = amt(t), e = sp(t, 0, 140, 14);
+            const group = `scale(${lerp(.3, 1, e).toFixed(3)}) rotateX(${(lerp(70, 0, e) + p * 16).toFixed(2)}deg) rotateY(${(p * -24 + Math.sin(t) * 4 * p).toFixed(2)}deg) rotateZ(${(p * -4).toFixed(2)}deg)`;
+            return { opacity: clamp(t * 5), transform: `${group} translate3d(${px((k % 2 ? 1 : -1) * 46 * p * U + Math.sin(t * 1.7 + k) * 8 * p)},${px((k - mid) * 70 * p * U)},${px((k - mid) * 110 * p * U)})`, boxShadow: `0 0 0 ${p > .05 ? 1.5 : 0}px ${C('accent2')}aa, 0 ${px(30 * p)} ${px(60 * p)} rgba(0,0,0,${(.55 * p).toFixed(2)})` }; }}>
+          <div className="fill" style=${{ overflow: 'hidden', borderRadius: 'inherit' }}><img src=${img.src} style=${{ position: 'absolute', left: 0, top: -k * sh, width: cw, height: fullH }} /></div>
+          ${lab && html`<${A} className="abs chip glass" style=${{ left: '100%', top: '50%', fontSize: 30 * U, color: '#fff', marginLeft: 26 * U }}
+            f=${t => { const p = amt(t), a = clamp((p - .55) * 4); return { opacity: a, transform: `translate(${(k % 2 ? 0 : -cw - 52 * U - 100 * 0)}px,-50%) translateX(${k % 2 ? '0%' : '-100%'}) scale(${lerp(.5, 1, a).toFixed(3)})` }; }}>${lab.text}<//>`}
+        <//>`; })}
+    </div>
+    <${A} className="fill" style=${{ background: '#fff', pointerEvents: 'none' }} f=${t => ({ opacity: t > collapse + .25 ? Math.exp(-(t - collapse - .25) * 9) * .3 : 0 })} />
+  </div>`;
+}
+
+function Wall({ sc }) {
+  const imgs = sc.images || [];
+  const cols = VERT ? 4 : 6, cardW = 300 * U, gap = 28 * U;
+  const colEls = Array.from({ length: cols }, (_, j) => {
+    const list = Array.from({ length: 6 }, (_, k) => imgs[(j * 2 + k) % imgs.length]);
+    const hts = list.map(im => Math.min(cardW * im.h / im.w, cardW * 2));
+    const cycle = hts.slice(0, 3).reduce((s, h) => s + h + gap, 0);
+    return { list, hts, cycle, dir: j % 2 ? 1 : -1, speed: (90 + j * 25) * U };
+  });
+  const totalW = cols * (cardW + gap);
+  return html`<div className="fill persp" style=${{ perspectiveOrigin: '50% 40%' }}>
+    <${A} className="abs p3d" style=${{ left: CX - totalW / 2, top: -H * .25, width: totalW, height: H * 1.6 }}
+      f=${t => { const e = sp(t, 0, 70, 14); return { transform: `rotateX(${lerp(60, 36, e).toFixed(2)}deg) rotateZ(${lerp(-40, -22, e).toFixed(2)}deg) scale(${(lerp(2.6, 1.3, e) + t * .035).toFixed(3)})`, opacity: clamp(t * 3) }; }}>
+      ${colEls.map((c, j) => html`<${A} key=${j} className="abs" style=${{ left: j * (cardW + gap), top: 0, width: cardW, display: 'flex', flexDirection: 'column', gap }}
+        f=${t => ({ transform: `translateY(${px(-c.cycle + (((c.dir * t * c.speed) % c.cycle) + c.cycle) % c.cycle)})` })}>
+        ${c.list.map((im, k) => html`<div key=${k} style=${{ width: cardW, height: c.hts[k], borderRadius: 18 * U, overflow: 'hidden', flex: 'none', boxShadow: `0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.14)`, background: `url(${im.src}) top center / cover` }} />`)}
+      <//>`)}
+    <//>
+    <div className="fill" style=${{ background: `radial-gradient(ellipse at 50% ${(CY / H * 100).toFixed(0)}%, rgba(4,3,10,.82) 0%, rgba(4,3,10,.35) 45%, transparent 75%)` }} />
+    ${sc.title && html`<${Headline} text=${sc.title} y=${CY - 120 * U} size=${96} delay=${.35} />`}
+  </div>`;
+}
+
+function Orbit({ sc }) {
+  const items = sc.items || [], n = items.length || 1, R = (VERT ? 400 : 560) * U, tiltY = R * .34;
+  const step = sc.step || Math.max(.55, (sc.dur - 1.6) / n);
+  const logo = sc.logo;
+  return html`<div className="fill">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.1} />`}
+    <${Rings} at=${.3} y=${CY + 40 * U} every=${1.3} size=${260 * U} />
+    <${A} className="abs" style=${{ left: CX, top: CY + 40 * U, transform: 'translate(-50%,-50%)' }}
+      f=${t => { const p = sp(t, .1, 220, 12); return { transform: `translate(-50%,-50%) scale(${lerp(0, 1, p).toFixed(3)}) rotate(${((1 - p) * -90).toFixed(1)}deg)` }; }}>
+      ${logo ? html`<img src=${logo.src} style=${{ width: 220 * U, height: 220 * U, objectFit: 'contain', borderRadius: 48 * U, filter: `drop-shadow(0 0 40px ${C('accent')})` }} />`
+        : html`<div className="disp" style=${{ fontSize: 84 * U, textAlign: 'center', textShadow: `0 0 40px ${C('accent')}` }}>${sc.center || ''}</div>`}
+    <//>
+    ${items.map((it, i) => html`<${A} key=${i} className="abs chip glass" style=${{ left: CX, top: CY + 40 * U, fontSize: 38 * U }}
+      f=${t => { const a = i / n * Math.PI * 2 + t * (sc.speed || .55), dep = Math.sin(a), pop = sp(t, .3 + i * .08, 240, 14);
+        const act = Math.floor((t - 1.2) / step) % n === i && t > 1.2; const r = R * lerp(.2, 1, pop);
+        return { transform: `translate(-50%,-50%) translate(${px(Math.cos(a) * r)},${px(dep * tiltY)}) scale(${(lerp(.62, 1.12, (dep + 1) / 2) * (act ? 1.22 : 1) * pop).toFixed(3)})`, zIndex: Math.round(dep * 50) + 60, opacity: lerp(.4, 1, (dep + 1) / 2),
+          background: act ? C('accent2') : '', color: act ? '#04030a' : '#fff', boxShadow: act ? `0 0 60px ${C('accent2')}` : 'none' }; }}>${it}<//>`)}
+  </div>`;
+}
+
+function Wipe({ sc }) {
+  const a = sc.before, b = sc.after, lab = sc.labels || ['Before', 'After'];
+  const cw = Math.min(W - 80 * U, VERT ? 960 * U : 1300 * U), chh = Math.min(CH * .9, cw * b.h / b.w), skew = chh * .35;
+  const p = t => { if (t < 2.6) return E.inOut(prog(t, .8, 1.9)); if (t < 3.3) return lerp(1, .38, E.inOut(prog(t, 2.6, 3.05))); return lerp(.38, 1, E.inOut(prog(t, 3.3, 3.9))); };
+  const hits = [1.9, 3.9];
+  const layer = im => html`<div className="fill" style=${{ background: `url(${im.src}) top center / cover` }} />`;
+  return html`<div className="fill persp">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.1} />`}
+    <${A} className="abs" style=${{ left: CX - cw / 2, top: CY - chh / 2 + (sc.title ? CH * .06 : 0), width: cw, height: chh }}
+      f=${t => { const e = sp(t, 0, 140, 14), s = shake(t, hits, 14 * U); return { transform: `translate(${px(s.x)},${px(s.y)}) scale(${lerp(.7, 1, e).toFixed(3)}) rotateX(${lerp(40, 0, e).toFixed(2)}deg)`, opacity: clamp(t * 5) }; }}>
+      <div className="fill" style=${{ borderRadius: 24 * U, overflow: 'hidden', boxShadow: `0 40px 120px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.16)` }}>
+        ${layer(a)}
+        <${A} className="fill" f=${t => { const x = p(t) * (cw + skew); return { clipPath: `polygon(0 0, ${px(x)} 0, ${px(x - skew)} 100%, 0 100%)` }; }}>${layer(b)}<//>
+      </div>
+      <${A} className="abs" style=${{ top: -40 * U, height: chh + 80 * U, width: 8 * U, marginLeft: -4 * U, background: '#fff', borderRadius: 9, boxShadow: `0 0 30px ${C('accent2')}, 0 0 70px ${C('hot')}` }}
+        f=${t => { const x = p(t) * (cw + skew) - skew / 2, mv = Math.abs(p(t + .02) - p(t)) * 50; return { left: px(x), transform: `rotate(${(Math.atan2(skew, chh) * 180 / Math.PI).toFixed(2)}deg)`, opacity: p(t) > .001 && p(t) < .999 ? 1 : 0, filter: `drop-shadow(${px(mv * 12)} 0 0 rgba(255,46,110,.9)) drop-shadow(${px(-mv * 12)} 0 0 rgba(34,227,255,.9))` }; }} />
+      <${A} className="abs chip" style=${{ left: 22 * U, top: 22 * U, background: 'rgba(0,0,0,.65)', color: '#fff', fontSize: 30 * U }} f=${t => ({ opacity: clamp(t * 3) * (1 - clamp(p(t) * 3)) })}>${lab[0]}<//>
+      <${A} className="abs chip" style=${{ right: 22 * U, top: 22 * U, background: C('accent2'), color: '#04030a', fontSize: 30 * U }} f=${t => { const q = clamp((p(t) - .9) * 10); return { opacity: q, transform: `scale(${lerp(.5, 1, q).toFixed(3)})` }; }}>${lab[1]}<//>
+    <//>
+    <${Burst} at=${1.9} y=${CY} n=${24} power=${.7} />
+  </div>`;
+}
+
+function Counter({ sc }) {
+  const to = +sc.value || 0, from = +sc.from || 0, dec = sc.decimals || 0, hit = 1.7;
+  const fmt = v => (sc.prefix || '') + v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (sc.suffix || '');
+  const len = fmt(to).length;
+  const size = Math.min(320, (VERT ? 980 : 1500) / (len * .78)) * U;
+  return html`<div className="fill">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.1} />`}
+    <${Rings} at=${hit} n=${4} size=${380 * U} />
+    <${A} className="abs disp" style=${{ left: 0, right: 0, top: CY, textAlign: 'center', fontSize: size }}
+      f=${t => { const p = E.expo(prog(t, .2, hit)), v = lerp(from, to, p), punch = t > hit ? Math.exp(-(t - hit) * 7) * Math.sin((t - hit) * 30) * .12 : 0;
+        return { _text: fmt(dec ? +v.toFixed(dec) : Math.round(v)), transform: `translateY(-50%) scale(${(1 + punch).toFixed(3)}) skewX(${(-(1 - p) * 10).toFixed(2)}deg)`, filter: `blur(${px((1 - p) * 8)})`, textShadow: `0 0 ${px(60 * U)} ${C('accent')}, ${rgbSplit(t > hit ? Math.exp(-(t - hit) * 6) : (1 - p) * .6, 16 * U).replace('none', '0 0 0 transparent')}` }; }} />
+    ${sc.label && html`<${A} className="abs" style=${{ left: 60, right: 60, top: CY + size * .62, textAlign: 'center', fontSize: 46 * U, fontWeight: 800, color: C('muted') }}
+      f=${t => { const p = sp(t, 1.0, 200, 16); return { opacity: clamp((t - 1) * 4), transform: `translateY(${px((1 - p) * 50)})` }; }}>${sc.label}<//>`}
+    <${Burst} at=${hit} />
+  </div>`;
+}
+
+function Fan({ sc }) {
+  const imgs = (sc.images || []).slice(0, 4), n = imgs.length, mid = (n - 1) / 2;
+  const fh = Math.min(CH * (sc.title ? .74 : .86), 940 * U), fw = fh * .47;
+  const spread = (VERT ? 300 : 420) * U * (n > 3 ? .8 : 1);
+  return html`<div className="fill persp">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.15} />`}
+    ${imgs.map((im, i) => { const o = i - mid;
+      return html`<${A} key=${i} className="abs" style=${{ left: CX - fw / 2, top: CY - fh / 2 + (sc.title ? CH * .08 : 0), zIndex: 10 - Math.round(Math.abs(o) * 2) }}
+        f=${t => { const e = sp(t, i * .06, 150, 15), p = sp(t, .55, 110, 12), hero = Math.abs(o) < .6 ? sp(t, 2, 160, 14) : 0;
+          return { transform: `translate3d(${px(o * spread * p)},${px((1 - e) * 1200 * U + Math.abs(o) * 40 * p * U + Math.sin(t * 1.4 + i) * 10 * U)},${px(-Math.abs(o) * 160 * p + hero * 80)}) rotateZ(${(o * 13 * p).toFixed(2)}deg) rotateY(${(-o * 20 * p).toFixed(2)}deg) scale(${(1 + hero * .06).toFixed(3)})` }; }}>
+        <${Phone} w=${fw} h=${fh} glow=${Math.abs(o) < .6}><img src=${im.src} style=${{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'top' }} /><//>
+      <//>`; })}
+  </div>`;
+}
+
+function Prompt({ sc }) {
+  const text = sc.prompt || '', cps = sc.cps || 30, t0 = .5, typed = t0 + text.length / cps, think = typed + .25, out = think + (sc.think ?? .9);
+  const pw = Math.min(W - 80 * U, 960 * U), img = sc.image;
+  const resultH = img ? Math.min(CH * .55, pw * .82 * img.h / img.w) : 0;
+  return html`<div className="fill persp">
+    ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.1} />`}
+    <${A} className="abs glass" style=${{ left: CX - pw / 2, width: pw, boxSizing: 'border-box', borderRadius: 28 * U, padding: `${28 * U}px ${34 * U}px`, background: 'rgba(16,14,26,.86)' }}
+      f=${t => { const e = sp(t, 0, 170, 16), up = img ? E.inOut(prog(t, out, out + .6)) : 0; return { top: px(CY - 150 * U - up * (resultH / 2 + 40 * U)), transform: `scale(${lerp(.8, 1, e).toFixed(3)}) rotateX(${lerp(30, 0, e).toFixed(2)}deg)`, opacity: clamp(t * 5) }; }}>
+      <div style=${{ display: 'flex', alignItems: 'center', gap: 14 * U, marginBottom: 22 * U, font: `800 ${28 * U}px Inter`, color: C('muted') }}>
+        <span style=${{ width: 40 * U, height: 40 * U, borderRadius: 12 * U, display: 'grid', placeItems: 'center', background: C('accent'), color: '#fff' }}>✳</span>${sc.app || 'AI'}</div>
+      <div style=${{ font: `600 ${40 * U}px/1.35 "JetBrains Mono", monospace`, color: '#fff', minHeight: 110 * U, wordBreak: 'break-word' }}>
+        <span style=${{ color: C('accent2') }}>›  </span><${A} as="span" f=${t => ({ _text: text.slice(0, Math.max(0, Math.floor((t - t0) * cps))) })} /><${A} as="span" style=${{ display: 'inline-block', width: '.55em', height: '1.05em', verticalAlign: '-.15em', background: C('accent2'), marginLeft: 4 }} f=${t => ({ opacity: t < typed + .2 || Math.floor(t * 2.4) % 2 ? 1 : 0 })} /></div>
+      <${A} style=${{ marginTop: 18 * U, height: 10 * U, borderRadius: 9, background: `linear-gradient(90deg, transparent, ${C('accent')}, ${C('accent2')}, ${C('hot')}, transparent)`, backgroundSize: '200% 100%' }}
+        f=${t => ({ opacity: t > think && t < out + .3 ? 1 - prog(t, out, out + .3) : 0, backgroundPosition: `${((t * 160) % 200).toFixed(1)}% 0` })} />
+      ${!img && (sc.result || []).map((r, i) => html`<${A} key=${i} style=${{ font: `700 ${34 * U}px Inter`, marginTop: 14 * U, color: '#fff' }}
+        f=${t => { const p = sp(t, out + i * .22, 260, 16); return { opacity: clamp((t - out - i * .22) * 6), transform: `translateX(${px((1 - p) * -40)})` }; }}><span style=${{ color: C('accent2') }}>✓ </span>${r}<//>`)}
+    <//>
+    ${img && html`<${A} className="abs" style=${{ left: CX - pw * .41, width: pw * .82, height: resultH, borderRadius: 20 * U, overflow: 'hidden', background: `url(${img.src}) top center / cover`, boxShadow: `0 40px 100px rgba(0,0,0,.6), 0 0 0 1.5px rgba(255,255,255,.2), 0 0 120px -10px ${C('accent')}` }}
+      f=${t => { const p = sp(t, out + .1, 160, 13); return { top: px(CY - 150 * U + 120 * U), opacity: clamp((t - out - .1) * 5), transform: `translateY(${px(lerp(-60, 60, p))}) scale(${lerp(.2, 1, p).toFixed(3)}) rotateX(${lerp(-70, 0, p).toFixed(2)}deg)` }; }} />`}
+    ${img && html`<${Burst} at=${out + .25} y=${CY + 60 * U} n=${26} power=${.8} />`}
+  </div>`;
+}
+
+function End({ sc }) {
+  const toks = tokens(sc.title || STORY.title || '');
+  const size = Math.min(150, (VERT ? 940 : 1400) / (Math.max(...plain(sc.title || '').split(' ').map(w => w.length), 4) * .86)) * U;
+  return html`<div className="fill">
+    <${Rings} at=${.2} n=${4} size=${420 * U} y=${CY - 120 * U} />
+    ${sc.logo && html`<${A} className="abs" style=${{ left: CX - 110 * U, top: CY - 380 * U, width: 220 * U, height: 220 * U }}
+      f=${t => { const p = sp(t, .05, 200, 11); return { transform: `scale(${p.toFixed(3)}) rotate(${((1 - p) * 120).toFixed(1)}deg)` }; }}><img src=${sc.logo.src} style=${{ width: '100%', height: '100%', objectFit: 'contain', filter: `drop-shadow(0 0 50px ${C('accent')})` }} /><//>`}
+    <div className="abs disp" style=${{ left: 40, right: 40, top: CY + (sc.logo ? 30 : -60) * U, transform: 'translateY(-50%)', textAlign: 'center', fontSize: size }}>
+      ${toks.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ margin: '0 .14em', background: tk.acc ? 'none' : `linear-gradient(100deg, #fff 40%, ${C('accent2')} 50%, #fff 60%) 0 0 / 300% 100%`, WebkitBackgroundClip: tk.acc ? '' : 'text', backgroundClip: tk.acc ? '' : 'text', color: tk.acc ? '' : 'transparent' }}
+        f=${t => { const d = .25 + i * .09, p = sp(t, d, 300, 14); return { opacity: clamp((t - d) * 6), transform: `translateY(${px((1 - p) * 80)}) scale(${lerp(1.6, 1, p).toFixed(3)})`, filter: `blur(${px(Math.max(0, 1 - (t - d) / .2) * 12)})`, backgroundPosition: `${(100 - E.inOut(prog(t, 1.1, 2.0)) * 100).toFixed(1)}% 0` }; }}>${tk.text}<//>`)}
+    </div>
+    ${sc.cta && html`<${A} className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 150 * U, textAlign: 'center' }}
+      f=${t => { const p = sp(t, 1.0, 260, 12); return { opacity: clamp((t - 1) * 5), transform: `scale(${p.toFixed(3)}) translateY(${px(Math.sin(t * 4) * 6)})` }; }}>
+      <span className="chip" style=${{ display: 'inline-block', background: C('accent'), color: '#fff', fontSize: 44 * U, padding: `${18 * U}px ${40 * U}px`, boxShadow: `0 0 70px ${C('accent')}` }}>${tokens(sc.cta).map((tk, i) => html`<span key=${i} style=${tk.acc ? { color: '#04030a', background: C('accent2'), borderRadius: 12, padding: '0 .3em', margin: '0 .1em' } : null}>${tk.text} </span>`)}</span><//>`}
+    ${sc.handle && html`<${A} className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 30 * U, textAlign: 'center', fontSize: 34 * U, fontWeight: 700, color: C('muted') }} f=${t => ({ opacity: clamp((t - 1.4) * 3) })}>${sc.handle}<//>`}
+    <${Burst} at=${.3} y=${CY - 120 * U} n=${40} />
+  </div>`;
+}
+
+// fly the camera through a corridor of the product's screens, then slam a title at the far end
+function Tunnel({ sc }) {
+  const imgs = sc.images || [], gapZ = 1100, speed = sc.speed || 1500, cardW = (VERT ? 760 : 980) * U;
+  const n = Math.max(imgs.length, 6);
+  const arrive = (n - 1) * gapZ / speed + .4;
+  return html`<div className="fill persp" style=${{ perspective: '900px', perspectiveOrigin: `50% ${(CY / H * 100).toFixed(1)}%` }}>
+    ${Array.from({ length: n }, (_, i) => { const im = imgs[i % imgs.length], side = i % 2 ? 1 : -1, h = Math.min(cardW * im.h / im.w, cardW * 1.6);
+      return html`<${A} key=${i} className="abs" style=${{ left: CX - cardW / 2, top: CY - h / 2, width: cardW, height: h, borderRadius: 24 * U, background: `url(${im.src}) top center / cover`, boxShadow: `0 0 0 2px rgba(255,255,255,.18), 0 0 80px -10px ${C(i % 3 ? 'accent' : 'accent2')}`, zIndex: n - i }}
+        f=${t => { const z = -i * gapZ + Math.min(t, arrive) * speed + Math.max(0, t - arrive) * 60; const fade = clamp((z + gapZ * 5) / (gapZ * 2)) * (1 - clamp((z - 350) / 400));
+          const last = i === n - 1;
+          return { opacity: fade, transform: `translate3d(${px(last ? 0 : side * 420 * U)},${px(last ? 0 : (i % 3 - 1) * 160 * U)},${px(Math.min(z, last ? 0 : 1e4))}) rotateY(${last ? 0 : side * -38}deg)` }; }} />`; })}
+    <${A} className="fill" style=${{ background: `radial-gradient(circle at 50% ${(CY / H * 100).toFixed(0)}%, transparent 20%, ${C('bg')} 75%)`, pointerEvents: 'none' }} f=${t => ({ opacity: .55 + .35 * Math.sin(t * 2) })} />
+    ${sc.title && html`<${Headline} text=${sc.title} y=${SAFE.top + 20 * U} size=${86} delay=${arrive - .2} />`}
+  </div>`;
+}
+
+// a giant word filled with the product, then the camera dives through a letter into the real screen
+function Mask({ sc }) {
+  const img = sc.image, word = plain(sc.word || 'NEW'), dive = sc.dive ?? 1.5;
+  const size = Math.min(420, (VERT ? 1000 : 1700) / (word.length * .92)) * U;
+  return html`<div className="fill">
+    <${A} className="fill" style=${{ background: `url(${img.src}) top center / cover` }}
+      f=${t => { const q = E.inOut(prog(t, dive + .25, dive + .8)); return { opacity: q, transform: `scale(${lerp(1.5, 1.05, q) + Math.max(0, t - dive - .8) * .02})`, filter: q < 1 ? `blur(${px((1 - q) * 18)})` : 'none' }; }} />
+    <${A} className="abs disp" style=${{ left: 0, right: 0, top: CY, textAlign: 'center', fontSize: size, lineHeight: 1, backgroundImage: `url(${img.src})`, backgroundSize: 'cover', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: `${2 * U}px rgba(255,255,255,.5)`, transformOrigin: `${sc.origin || '50% 50%'}` }}
+      f=${t => { const p = sp(t, 0, 160, 13), z = Math.pow(prog(t, dive, dive + .75), 3);
+        return { transform: `translateY(-50%) scale(${(lerp(.4, 1, p) * (1 + z * 30)).toFixed(3)}) rotate(${((1 - p) * -8).toFixed(2)}deg)`, backgroundPosition: `${(50 + Math.sin(t * 1.3) * 40).toFixed(1)}% ${(t * 18 % 100).toFixed(1)}%`, opacity: 1 - clamp((z - .6) * 4), filter: `drop-shadow(0 0 ${px(40 * U)} ${C('accent')})` }; }}>${word}<//>
+    ${sc.caption && html`<${A} className="abs chip glass" style=${{ left: '50%', top: SAFE.top + 40 * U, fontSize: 40 * U, color: '#fff' }}
+      f=${t => { const p = sp(t, dive + .9, 260, 14); return { opacity: clamp((t - dive - .9) * 5), transform: `translateX(-50%) scale(${p.toFixed(3)})` }; }}>${sc.caption}<//>`}
+  </div>`;
+}
+
+const SCENES = { tunnel: Tunnel, mask: Mask, slam: Slam, screen: Screen, exploded: Exploded, wall: Wall, orbit: Orbit, wipe: Wipe, counter: Counter, fan: Fan, prompt: Prompt, end: End };
+
+/* ---------- transitions in (every scene enters with a hit) ---------- */
+const TIN = .42;
+function enter(kind, t) {
+  const p = clamp(t / TIN), e = E.out(p), q = 1 - e;
+  switch (kind) {
+    case 'zoom': return { transform: `scale(${(1 + q * .55).toFixed(3)})`, filter: q > .01 ? `blur(${px(q * 22)})` : 'none', opacity: clamp(p * 3) };
+    case 'whip': return { transform: `translateX(${px(q * W * .7)}) skewX(${(-q * 16).toFixed(2)}deg)`, filter: q > .01 ? `blur(${px(q * 26)})` : 'none', opacity: 1 };
+    case 'glitch': { const j = p < 1 ? (rnd(Math.floor(t * 60)) - .5) * 90 * q : 0; return { transform: `translateX(${px(j)})`, filter: q > .02 ? `drop-shadow(${px(q * 22)} 0 0 rgba(255,46,110,.85)) drop-shadow(${px(-q * 22)} 0 0 rgba(34,227,255,.85))` : 'none', opacity: 1 }; }
+    case 'drop': { const s = sp(t, 0, 230, 15); return { transform: `translateY(${px((1 - s) * -H * .9)})`, filter: 'none', opacity: 1 }; }
+    case 'flash': return { transform: `scale(${(1 + q * .1).toFixed(3)})`, filter: 'none', opacity: 1 };
+    default: return { transform: 'none', filter: 'none', opacity: 1 };
+  }
+}
+function SceneHost({ sc }) {
+  const Comp = SCENES[sc.type];
+  return html`<${At} t0=${sc.start}>
+    <${A} className="fill" f=${t => enter(sc.in, t)}><${Comp} sc=${sc} /><//>
+    ${sc.in === 'flash' && html`<${A} className="fill" style=${{ background: '#fff', pointerEvents: 'none' }} f=${t => ({ opacity: (1 - clamp(t / .35)) * .85 })} />`}
+    ${sc.in === 'glitch' && html`<div className="fill" style=${{ pointerEvents: 'none' }}>${[0, 1, 2, 3, 4].map(k => html`<${A} key=${k} className="abs" style=${{ left: 0, right: 0, height: (20 + rnd(k) * 70) * U, background: k % 2 ? C('accent2') : C('hot'), mixBlendMode: 'screen' }}
+      f=${t => ({ opacity: t < .3 && rnd(Math.floor(t * 40) + k * 13) > .45 ? .55 : 0, top: px(rnd(Math.floor(t * 40) * 3 + k) * H), transform: `translateX(${px((rnd(k * 9 + Math.floor(t * 40)) - .5) * 200)})` })} />`)}</div>`}
+  <//>`;
+}
+
+/* ---------- background, grain, captions ---------- */
+function Background() {
+  const blobs = [['accent', .18, .22, 1], ['accent2', .82, .35, 1.3], ['hot', .5, .78, .8]];
+  return html`<div className="fill">
+    ${blobs.map(([c, x, y, s], i) => html`<${A} key=${i} className="abs" style=${{ left: x * W - 450 * U, top: y * H - 450 * U, width: 900 * U, height: 900 * U, borderRadius: '50%', background: C(c), filter: `blur(${170 * U}px)`, opacity: .33 }}
+      f=${t => ({ transform: `translate(${px(Math.sin(t * .35 * s + i) * 160 * U)},${px(Math.cos(t * .28 * s + i * 2) * 200 * U)}) scale(${(1 + .15 * Math.sin(t * .5 + i)).toFixed(3)})` })} />`)}
+    <div className="fill persp" style=${{ perspective: '700px', overflow: 'hidden' }}>
+      <${A} className="abs" style=${{ left: -W, right: -W, top: H * .55, height: H, backgroundImage: `linear-gradient(${C('accent')}55 2px, transparent 2px), linear-gradient(90deg, ${C('accent')}55 2px, transparent 2px)`, backgroundSize: `${110 * U}px ${110 * U}px`, transformOrigin: '50% 0', maskImage: 'linear-gradient(transparent, #000 30%, transparent 90%)', WebkitMaskImage: 'linear-gradient(transparent, #000 30%, transparent 90%)', opacity: .35 }}
+        f=${t => ({ transform: `rotateX(72deg)`, backgroundPosition: `0 ${px((t * 90 * U) % (110 * U))}` })} />
+    </div>
+    ${Array.from({ length: 22 }, (_, i) => html`<${A} key=${'d' + i} className="abs" style=${{ left: rnd(i) * W, width: (3 + rnd(i + 9) * 5) * U, height: (3 + rnd(i + 9) * 5) * U, borderRadius: 9, background: '#fff' }}
+      f=${t => ({ top: px(H - ((t * (30 + rnd(i + 3) * 60) * U + rnd(i + 5) * H) % (H + 40))), opacity: .15 + .35 * rnd(i + 2) })} />`)}
+  </div>`;
+}
+const NOISE = `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>")`;
+const Grain = () => html`<${A} className="fill" style=${{ backgroundImage: NOISE, opacity: .09, mixBlendMode: 'overlay', pointerEvents: 'none' }} f=${t => { const k = Math.floor(t * 24); return { backgroundPosition: `${Math.floor(rnd(k) * 220)}px ${Math.floor(rnd(k + 7) * 220)}px` }; }} />`;
+
+// word timings: from STORY.words ([{w, s, e}] in seconds, from a voice take) or spread over each scene's `say`
+function buildWords() {
+  if (Array.isArray(STORY.words) && STORY.words.length) return STORY.words.map(w => ({ w: w.w, s: w.s, e: w.e, acc: /^\*.*\*$/.test(w.w) }));
+  const out = [];
+  for (const sc of scenes) {
+    const toks = tokens(sc.say || ''); if (!toks.length) continue;
+    const a = sc.start + .15, b = sc.start + sc.dur - .25, wt = toks.map(t => t.text.length + 2), sum = wt.reduce((s, x) => s + x, 0);
+    let c = a; toks.forEach((tk, i) => { const d = (b - a) * wt[i] / sum; out.push({ w: tk.text, s: c, e: c + d, acc: tk.acc, brk: i === 0 }); c += d; });
+  }
+  return out;
+}
+function pages(words) {
+  const out = []; let cur = [];
+  const flush = () => { if (cur.length) out.push(cur); cur = []; };
+  for (const w of words) {
+    const len = cur.reduce((s, x) => s + x.w.length + 1, 0);
+    if (w.brk || cur.length >= (VERT ? 4 : 6) || len + w.w.length > (VERT ? 22 : 34) || (cur.length && w.s - cur[cur.length - 1].e > .6)) flush();
+    cur.push(w); if (/[.!?،؟]$/.test(w.w)) flush();
+  }
+  flush();
+  return out.map((ws, i) => ({ ws, s: ws[0].s, e: out[i + 1] ? Math.min(out[i + 1][0].s, ws[ws.length - 1].e + .6) : ws[ws.length - 1].e + .8 }));
+}
+function Captions() {
+  const { T } = useContext(Ctx);
+  const pg = React.useMemo(() => pages(buildWords()), []);
+  const [i, setI] = useState(-1);
+  useEffect(() => { const f = v => setI(pg.findIndex(p => v >= p.s && v < p.e)); f(T.get()); return T.on('change', f); }, []);
+  if (i < 0 || STORY.captions === false) return null;
+  const p = pg[i], size = (VERT ? 62 : 54) * U;
+  return html`<div className="cap" style=${{ top: VERT ? SAFE.bottom + 70 * U : H - 150 * U, fontSize: size, direction: STORY.rtl ? 'rtl' : 'ltr' }}>
+    <${At} t0=${0}>${p.ws.map((w, k) => html`<${A} key=${i + '-' + k} as="span" className="w"
+      f=${t => { const on = t >= w.s, cur = on && (t < w.e || k === p.ws.length - 1 && t < p.e), pop = sp(t, w.s, 420, 18);
+        return { opacity: on ? 1 : .0, transform: `translateY(${px((1 - Math.min(1, pop)) * 30)}) scale(${(on ? lerp(.6, 1, pop) * (cur ? 1.08 : 1) : .6).toFixed(3)}) rotate(${cur ? '-2deg' : '0deg'})`, background: cur ? C('accent') : 'transparent', color: !cur && w.acc ? C('accent2') : '#fff' }; }}>${plain(w.w)}<//>`)}<//>
+  </div>`;
+}
+
+/* ---------- app: clock, scaling, render hooks ---------- */
+function App() {
+  const T = useMotionValue(0);
+  const [idx, setIdx] = useState(0);
+  const [scale, setScale] = useState(1);
+  const [ui, setUi] = useState({ playing: !RENDER, muted: true, show: true });
+  const st = useRef({ clock: 0, last: 0, playing: !RENDER });
+  const audio = useRef(null);
+  useEffect(() => T.on('change', v => setIdx(sceneAt(v))), []);
+  useEffect(() => { const fit = () => setScale(RENDER ? 1 : Math.min(innerWidth / W, innerHeight / H)); fit(); addEventListener('resize', fit); return () => removeEventListener('resize', fit); }, []);
+  useEffect(() => {
+    if (RENDER) return;
+    let raf; const HOLD = 1.6;
+    const tick = now => {
+      const s = st.current, dt = s.last ? Math.min(.1, (now - s.last) / 1000) : 0; s.last = now;
+      if (s.playing) {
+        const au = audio.current;
+        s.clock = au && !au.paused && !au.muted ? au.currentTime : s.clock + dt;
+        if (s.clock > TOTAL + HOLD) { s.clock = 0; if (au) au.currentTime = 0; }
+        T.set(Math.min(s.clock, TOTAL - .001));
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  useEffect(() => {
+    const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    window.__hype = {
+      W, H, fps: STORY.fps || 30, duration: TOTAL, audioPath: STORY._audioPath || null,
+      scenes: scenes.map(s => ({ type: s.type, start: s.start, dur: s.dur })),
+      ready: (async () => { await Promise.all(['900 60px Inter', '800 60px Inter', '700 60px Inter', '900 60px Unbounded', '700 60px Unbounded', '600 40px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); return true; })(),
+      async seek(t) { T.set(t); await raf2(); await Promise.all([...document.querySelectorAll('img')].map(i => i.complete ? i.decode().catch(() => {}) : new Promise(r => { i.onload = i.onerror = r; }))); await raf2(); },
+    };
+  }, []);
+  useEffect(() => { if (RENDER) return; let h; const show = () => { setUi(u => ({ ...u, show: true })); clearTimeout(h); h = setTimeout(() => setUi(u => ({ ...u, show: false })), 2200); }; show(); addEventListener('pointermove', show); return () => removeEventListener('pointermove', show); }, []);
+  const toggle = () => { const s = st.current; s.playing = !s.playing; const au = audio.current; if (au) s.playing ? au.play().catch(() => {}) : au.pause(); setUi(u => ({ ...u, playing: s.playing })); };
+  const restart = () => { const s = st.current; s.clock = 0; s.playing = true; if (audio.current) { audio.current.currentTime = 0; if (!audio.current.muted) audio.current.play().catch(() => {}); } setUi(u => ({ ...u, playing: true })); };
+  const sound = () => { const au = audio.current; if (!au) return; au.muted = !au.muted; if (!au.muted) { au.currentTime = Math.min(st.current.clock, TOTAL); au.play().catch(() => {}); } setUi(u => ({ ...u, muted: au.muted })); };
+  const beats = STORY.beats || [];
+  const sc = scenes[idx];
+  return html`<${Ctx.Provider} value=${{ T, t0: 0 }}>
+    <div className="stage" style=${{ width: W, height: H, transform: `scale(${scale})` }} onClick=${RENDER ? null : toggle}>
+      <${Background} />
+      <${A} className="fill" f=${t => { const b = beats.reduce((s, x) => s + (t >= x && t - x < .5 ? Math.exp(-(t - x) * 12) : 0), 0); return { transform: `scale(${(1 + b * .03).toFixed(4)})` }; }}>
+        <${SceneHost} key=${sc.i} sc=${sc} />
+      <//>
+      <${Captions} />
+      <div className="fill" style=${{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%)', pointerEvents: 'none' }} />
+      <${Grain} />
+      ${STORY.progress !== false && html`<${A} className="abs" style=${{ left: 0, top: 0, height: 6 * U, background: `linear-gradient(90deg, ${C('accent')}, ${C('accent2')})`, width: W, transformOrigin: 'left' }} f=${t => ({ transform: `scaleX(${clamp(t / TOTAL).toFixed(4)})` })} />`}
+    </div>
+    ${STORY.audio && !RENDER && html`<audio ref=${audio} src=${STORY.audio} muted preload="auto" />`}
+    ${!RENDER && html`<${motion.div} className="ui" animate=${{ opacity: ui.show ? 1 : 0 }}>
+      <button onClick=${toggle}>${ui.playing ? 'Pause' : 'Play'}</button>
+      <button onClick=${restart}>Restart</button>
+      ${STORY.audio && html`<button onClick=${sound}>${ui.muted ? 'Sound on' : 'Mute'}</button>`}
+    <//>`}
+  <//>`;
+}
+ReactDOM.createRoot(root).render(html`<${App} />`);
+})();
+</script><!--DOC-->
+</body>
+</html><!--/DOC-->

@@ -1,0 +1,18 @@
+{
+  "title": "Cal.com — hype-reel demo",
+  "format": "9:16",
+  "theme": { "bg": "#08080b", "accent": "#4f46e5", "accent2": "#c7d2fe", "hot": "#f472b6", "muted": "#b4b4c7" },
+  "scenes": [
+    { "type": "prompt", "dur": 4.8, "app": "Your calendar", "prompt": "Book a 45 min property viewing on the 21st", "image": "shots/home.jpg", "say": "One link, and people book you on their own." },
+    { "type": "screen", "dur": 6.4, "image": "shots/home.jpg", "device": "browser", "url": "cal.com",
+      "focus": [
+        { "x": 0.549, "y": 0.429, "w": 0.143, "h": 0.036, "label": "Pick a length", "at": 1.6 },
+        { "x": 0.712, "y": 0.214, "w": 0.196, "h": 0.457, "label": "See free days", "at": 3.1 },
+        { "x": 0.136, "y": 0.626, "w": 0.333, "h": 0.04, "label": "Sign up with Google", "at": 4.7 }
+      ], "say": "Pick a length, see the free days, sign up with Google." },
+    { "type": "mask", "dur": 3.6, "word": "BOOKED", "image": "shots/sec0.jpg", "caption": "No back-and-forth", "say": "Booked. No back-and-forth emails." },
+    { "type": "wall", "dur": 4, "images": ["shots/sec0.jpg", "shots/sec1.jpg", "shots/sec2.jpg", "shots/sec3.jpg", "shots/sec4.jpg", "shots/sec5.jpg"], "title": "Your all-purpose *scheduling* app", "say": "Buffers, reminders, video calls, payments." },
+    { "type": "fan", "dur": 3.8, "images": ["shots/m1000.jpg", "shots/home-m.jpg", "shots/m2200.jpg"], "title": "Works on *every* screen", "say": "And it works on your phone too." },
+    { "type": "end", "dur": 3.6, "title": "The better way to *schedule*", "cta": "cal.com", "handle": "Unofficial demo · made with hype-reel", "say": "The better way to schedule." }
+  ]
+}
