@@ -14,12 +14,18 @@ No After Effects. No templates you fill by hand. No API key.
 
 Four unofficial demos made with the skill from the products' public websites (not affiliated with these companies):
 
-| Supabase | Cal.com | Resend | Linear |
-|---|---|---|---|
-| [![Supabase demo](docs/supabase.gif)](videos/supabase.mp4) | [![Cal.com demo](docs/calcom.gif)](videos/calcom.mp4) | [![Resend demo](docs/resend.gif)](videos/resend.mp4) | [![Linear demo](docs/linear.gif)](videos/linear.mp4) |
-| [▶ MP4](videos/supabase.mp4) · [storyboard](examples/supabase/reel.json) | [▶ MP4](videos/calcom.mp4) · [storyboard](examples/calcom/reel.json) | [▶ MP4](videos/resend.mp4) · [storyboard](examples/resend/reel.json) | [▶ MP4](videos/linear.mp4) · [storyboard](examples/linear/reel.json) |
+<table>
+<tr>
+<td align="center"><b>Supabase</b><br><a href="videos/supabase.mp4"><img src="docs/supabase.gif" width="220" alt="Supabase demo"></a><br><a href="videos/supabase.mp4">▶ MP4</a> · <a href="examples/supabase/reel.json">storyboard</a></td>
+<td align="center"><b>Cal.com</b><br><a href="videos/calcom.mp4"><img src="docs/calcom.gif" width="220" alt="Cal.com demo"></a><br><a href="videos/calcom.mp4">▶ MP4</a> · <a href="examples/calcom/reel.json">storyboard</a></td>
+</tr>
+<tr>
+<td align="center"><b>Resend</b><br><a href="videos/resend.mp4"><img src="docs/resend.gif" width="220" alt="Resend demo"></a><br><a href="videos/resend.mp4">▶ MP4</a> · <a href="examples/resend/reel.json">storyboard</a></td>
+<td align="center"><b>Linear</b><br><a href="videos/linear.mp4"><img src="docs/linear.gif" width="220" alt="Linear demo"></a><br><a href="videos/linear.mp4">▶ MP4</a> · <a href="examples/linear/reel.json">storyboard</a></td>
+</tr>
+</table>
 
-Each GIF is the whole demo; the full 1080x1920 MP4s are in [`videos/`](videos).
+GIFs are 12-second highlights; click one (or ▶ MP4) for the full 1080x1920 video in [`videos/`](videos).
 
 ## Install
 
