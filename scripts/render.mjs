@@ -50,11 +50,12 @@ try {
     ];
     const proc = spawn(FFMPEG, ff, { stdio: ['pipe', 'inherit', 'inherit'] });
     const done = new Promise((res, rej) => proc.on('close', c => c ? rej(new Error('ffmpeg exited ' + c)) : res()));
+    let closed = false; proc.on('close', () => { closed = true; }); proc.stdin.on('error', () => {}); // -shortest: ffmpeg may stop at the end of the audio
     const t0 = Date.now();
-    for (let i = 0; i < frames; i++) {
+    for (let i = 0; i < frames && !closed; i++) {
       await page.evaluate(t => window.__hype.seek(t), from + i / fps);
       const buf = await grab();
-      if (!proc.stdin.write(buf)) await new Promise(r => proc.stdin.once('drain', r));
+      if (!proc.stdin.write(buf)) await new Promise(r => { proc.stdin.once('drain', r); proc.once('close', r); });
       if (i % fps === 0) process.stdout.write(`\r${i}/${frames} frames  ${((Date.now() - t0) / 1000).toFixed(0)} s`);
     }
     proc.stdin.end(); await done;
