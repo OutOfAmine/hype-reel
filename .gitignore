@@ -6,3 +6,4 @@ examples/*/build/
 examples/*/stills/
 examples/*/sheet.jpg
 __pycache__/
+examples/*/sheet-mon.jpg
