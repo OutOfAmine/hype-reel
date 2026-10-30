@@ -1,0 +1,75 @@
+{
+  "brand": "Espadrille",
+  "photo": "espadrille.png",
+  "accent": "#ff2b2b",
+  "voice": {
+    "engine": "chatterbox",
+    "voice": "af_bella",
+    "exaggeration": 0.9,
+    "loudness": -11,
+    "takes": [
+      2,
+      2,
+      2,
+      2,
+      2
+    ]
+  },
+  "intro": {
+    "text": "Bghiti video l product dyalk bhal hada?",
+    "highlight": "product",
+    "audio": "intro.mp3"
+  },
+  "shots": [
+    {
+      "type": "hook",
+      "line": "Stop scrolling... This is Espadrille."
+    },
+    {
+      "type": "float",
+      "line": "So light... you'll forget you're wearing them.",
+      "big": "light"
+    },
+    {
+      "type": "detail",
+      "line": "Grip... that never lets go."
+    },
+    {
+      "type": "colors",
+      "line": "Five colors. Zero chill."
+    },
+    {
+      "type": "end",
+      "line": "Espadrille... Move different.",
+      "badge": "NEW DROP"
+    }
+  ],
+  "colors": [
+    {
+      "name": "RED",
+      "color": "#ff2b2b"
+    },
+    {
+      "name": "BLUE",
+      "color": "#3d8bff"
+    },
+    {
+      "name": "GOLD",
+      "color": "#ffbf2e"
+    },
+    {
+      "name": "GREEN",
+      "color": "#2ee68a"
+    },
+    {
+      "name": "VIOLET",
+      "color": "#a95cff"
+    }
+  ],
+  "outro": {
+    "text": "Kteb liya PROMO f comment, w nsiftlk link f DM.",
+    "keyword": "PROMO",
+    "audio": "outro.mp3",
+    "handle": "@justbyamine"
+  }
+}

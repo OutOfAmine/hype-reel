@@ -2,3 +2,7 @@ node_modules/
 examples/*/reel.html
 examples/out/
 *.log
+examples/*/build/
+examples/*/stills/
+examples/*/sheet.jpg
+__pycache__/

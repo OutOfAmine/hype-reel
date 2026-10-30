@@ -38,6 +38,26 @@ Needs Node 18+, Python 3, and Chrome / Edge / Chromium installed (or `CHROME_PAT
 
 Then in Claude Code: `/hype-reel <url>` or just *"make a reel for my app"*.
 
+## Product promo from one photo (new)
+
+Got a physical product — shoes, perfume, a bag, food? Send Claude **one photo** and it walks you through the rest, one question at a time:
+the name, your brand colour, what makes it special, the voice you want. It writes the script, cuts the product out of the photo,
+builds the studio shots, close-ups and colourways, voices it with an open-source model (Kokoro, or Chatterbox for an emotional read),
+and renders the reel — with an optional line in **your own voice** before and after ("Comment PROMO and I'll send you the link").
+
+<p align="center"><a href="videos/espadrille.mp4"><img src="docs/espadrille.gif" width="260" alt="Espadrille promo"></a><br><a href="videos/espadrille.mp4">▶ Espadrille promo (MP4)</a> · <a href="examples/espadrille/promo.json">promo.json</a></p>
+
+In Claude Code, just say: *"make a promo video for my product"* and attach the photo.
+
+```bash
+python scripts/promo_assets.py examples/espadrille/promo.json   # cutout, studio plate, close-ups, colourways
+python scripts/promo_voice.py  examples/espadrille/promo.json   # AI voice (kokoro / chatterbox)
+python scripts/promo_build.py  examples/espadrille/promo.json   # voice + word timing + music + SFX -> build/reel.html
+node scripts/render.mjs examples/espadrille/build/reel.html espadrille.mp4
+```
+Extra Python packages: `pip install pillow numpy "kokoro>=0.9.4" soundfile` (+ `rembg onnxruntime` for photos with a background,
+`chatterbox-tts "setuptools<81"` for the emotional voice, `torch torchaudio` for exact word timing). Guide: [`references/promo.md`](references/promo.md).
+
 ## Real footage, your voice
 
 - `scripts/record_site.mjs` records a real site loading and scrolling.

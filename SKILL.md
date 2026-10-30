@@ -1,11 +1,13 @@
 ---
 name: hype-reel
-description: Turns any product (a URL, a local app, or a repo you can run) into an insane vertical promo reel built from its REAL screens — 3D device fly-ins with a camera that dives onto each feature, exploded UI layers, a corridor of screens the camera flies through, a giant word filled with the product that you dive into, orbiting feature chips, before/after glitch wipes, counters that burst into particles, AI-prompt typing that spits out the product — all Framer Motion, word-by-word captions, rendered frame-exact to a 1080x1920 MP4 and published as a shareable page. Use it whenever the user says /hype-reel, "make a reel/promo/trailer/ad for my product/site/app/SaaS", "launch video", "TikTok/Reel/Short for my startup", "make my landing page into a video", "product demo video", "hype video", or wants something viral to post about a product — even if they don't say "reel".
+description: Turns any product (a URL, a local app, or a repo you can run) into an insane vertical promo reel built from its REAL screens — 3D device fly-ins with a camera that dives onto each feature, exploded UI layers, a corridor of screens the camera flies through, a giant word filled with the product that you dive into, orbiting feature chips, before/after glitch wipes, counters that burst into particles, AI-prompt typing that spits out the product — all Framer Motion, word-by-word captions, rendered frame-exact to a 1080x1920 MP4 and published as a shareable page. Use it whenever the user says /hype-reel, "make a reel/promo/trailer/ad for my product/site/app/SaaS", "launch video", "TikTok/Reel/Short for my startup", "make my landing page into a video", "product demo video", "hype video", or wants something viral to post about a product — even if they don't say "reel". Also physical products from a photo (shoes, bottles, bags, food, cosmetics): "promo video for my product", "video l product dyali", "I have a product photo, make it an ad" — the guided product-promo mode.
 ---
 
 # hype-reel
 
 Make a 20-40 second vertical reel that sells one product. It is built from the product's **real screens** (captured with headless Chrome), staged with aggressive motion, and plays as a storyboard (`reel.json`) in a bundled React + Framer Motion player. Every frame is a pure function of time, so the same page plays live in a browser and renders to an exact MP4.
+
+**Two modes.** A product with screens (site, app, SaaS, CLI) → the storyboard flow below. A **physical product from a photo** (a shoe, a perfume, a bag…) → **product promo mode**: read `references/promo.md` and follow it step by step — it walks the user through everything with one question at a time, so a beginner gets a finished reel.
 
 `SKILL_DIR` below is this skill's folder. First run in a new copy: `cd SKILL_DIR && npm install` (puppeteer-core + ffmpeg-static; uses the Chrome/Edge already on the machine, or `CHROME_PATH`).
 
