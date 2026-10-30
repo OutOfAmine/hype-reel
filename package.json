@@ -6,10 +6,13 @@
   "private": true,
   "license": "MIT",
   "scripts": {
-    "check": "node --check scripts/capture.mjs && node --check scripts/render.mjs && node --check scripts/chrome.mjs && python scripts/build.py examples/supabase/reel.json"
+    "check": "node --check scripts/capture.mjs && node --check scripts/render.mjs && node --check scripts/chrome.mjs && node --check scripts/record_site.mjs && node --check scripts/record_term.mjs && node --check scripts/render_term.mjs && python scripts/build.py examples/supabase/reel.json"
   },
   "dependencies": {
     "ffmpeg-static": "^5.2.0",
     "puppeteer-core": "^23.11.1"
+  },
+  "optionalDependencies": {
+    "@homebridge/node-pty-prebuilt-multiarch": "^0.12.0"
   }
 }

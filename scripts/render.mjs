@@ -25,7 +25,7 @@ try {
   page.on('pageerror', e => console.error('PAGE ERROR', e.message));
   page.on('console', m => { if (m.type() === 'error') console.error('CONSOLE', m.text()); });
   await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
-  await page.goto(pathToFileURL(path.resolve(htmlFile)).href + '?render=1', { waitUntil: 'networkidle0', timeout: 120000 });
+  await page.goto(pathToFileURL(path.resolve(htmlFile)).href + '?render=1', { waitUntil: 'load', timeout: 120000 });
   await page.waitForFunction('window.__hype', { timeout: 60000 });
   const info = await page.evaluate(async () => { await window.__hype.ready; const h = window.__hype; return { W: h.W, H: h.H, fps: h.fps, duration: h.duration, audioPath: h.audioPath, scenes: h.scenes }; });
   await page.setViewport({ width: info.W, height: info.H, deviceScaleFactor: 1 });
@@ -50,11 +50,12 @@ try {
     ];
     const proc = spawn(FFMPEG, ff, { stdio: ['pipe', 'inherit', 'inherit'] });
     const done = new Promise((res, rej) => proc.on('close', c => c ? rej(new Error('ffmpeg exited ' + c)) : res()));
+    let closed = false; proc.on('close', () => { closed = true; }); proc.stdin.on('error', () => {}); // -shortest: ffmpeg may stop at the end of the audio
     const t0 = Date.now();
-    for (let i = 0; i < frames; i++) {
+    for (let i = 0; i < frames && !closed; i++) {
       await page.evaluate(t => window.__hype.seek(t), from + i / fps);
       const buf = await grab();
-      if (!proc.stdin.write(buf)) await new Promise(r => proc.stdin.once('drain', r));
+      if (!proc.stdin.write(buf)) await new Promise(r => { proc.stdin.once('drain', r); proc.once('close', r); });
       if (i % fps === 0) process.stdout.write(`\r${i}/${frames} frames  ${((Date.now() - t0) / 1000).toFixed(0)} s`);
     }
     proc.stdin.end(); await done;

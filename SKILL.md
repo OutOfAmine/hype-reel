@@ -25,6 +25,19 @@ node SKILL_DIR/scripts/capture.mjs <url> <dir>/shots --name app --click "#start,
 
 `--rects` prints each selector's box as fractions of the screenshot: paste them into a `screen` scene's `focus`. Otherwise read the screenshot and estimate fractions yourself (x, y, w, h, all 0-1). Use `--dark` for dark-mode sites, `--click`/`--js` to walk an app into the state worth showing. Capture 6-10 images: one desktop hero, 2-3 mobile, and page sections for the wall/tunnel scenes. Look at every shot before using it; an empty canvas or a cookie wall sells nothing.
 
+## 2b. Record real footage (what makes it feel real)
+
+Screenshots alone look like a slideshow. Record the product actually working and cut to it with `clip` scenes. Show 9:16 footage `full: true` with a slow `zoom` so it reads on a phone, and zoom terminals onto the line that matters; never leave footage small in the middle of the frame:
+
+```bash
+node SKILL_DIR/scripts/record_site.mjs <url> <dir>/site.mp4 --scroll 2400          # the real page loading, then a smooth scroll (mobile 1080x1920)
+KEYS='[[1.5,"npm run dev
+"]]' node SKILL_DIR/scripts/record_term.mjs <dir>/run.cast 30 <project> -- <shell or cli> [args]
+node SKILL_DIR/scripts/render_term.mjs <dir>/run.cast <dir>/run.mp4 --title "Terminal"   # real terminal emulator replay -> MP4
+```
+
+`record_term.mjs` types `KEYS` into a real PTY ([seconds, text] pairs) and logs every byte; `render_term.mjs` replays it in xterm.js frame by frame and prints the aspect to give the clip. Long runs: use the clip's `rate` (e.g. 8) to fast-forward. Recording Claude Code itself works too (`-- claude --allowedTools ...`).
+
 ## 3. Find the story
 
 - **Promise** (≤ 6 words): the hook and the end title. Steal the product's own headline if it is good.
@@ -44,7 +57,19 @@ Read `references/scenes.md` for every scene and field. A shape that hits:
 6. **Everywhere**: `fan` of phone screens.
 7. **End**: `end` — title, CTA pill (`Comment *KEYWORD*` or the URL), handle.
 
-6-9 scenes, never two of the same type in a row, alternate loud (slam/mask/counter) with screen-heavy scenes. Captions (`say`) are what the voice says, short and concrete; write them in the user's language. With a recorded voice, pass `audio` and `words` (`[{w, s, e}]` from forced alignment) and set each scene's `dur` to its line. Transitions default to a zoom/whip/glitch/flash/drop cycle; set `in` to override.
+6-9 scenes, never two of the same type in a row, alternate loud (slam/mask/counter) with screen-heavy scenes. Captions (`say`) are what the voice says, short and concrete; write them in the user's language.
+
+**With the user's own voice** (the strongest version): write the script one line per idea, have them record one take, clean it (any voice enhancer; keep natural speed), then:
+
+```bash
+python SKILL_DIR/scripts/align_words.py voice.wav lines.txt words.json   # word times; lines.txt = what was said
+```
+
+**Sound**: `python SKILL_DIR/scripts/sfx.py reel.json -o voice_sfx.wav` synthesises whooshes on cuts, impacts on slam words, pops on labels, shutters on screenshot walls (plus any scene `sfx`, like keyboard `typing` over a terminal clip) and mixes them under the voice; point `audio` at the result. Keep them under the voice (default peak -16 dBFS).
+
+Put `audio` and `words` in the storyboard and cut scenes on the words: each scene starts ~0.06 s before the word that introduces it, slams get `times` per word. If the script says "look at this video", leave a pause in the voice there (insert room tone) so the footage plays long enough to be seen.
+
+**Look**: `theme.mode: "light"` + `display: "Inter Tight"` + `accentFont: "Instrument Serif"` gives a clean editorial look (paper, ink, one accent colour, serif italic accent words); dark mode with `Anton` + `Montserrat` captions is the loud one. Pick one per reel and keep one accent colour. Transitions default to a zoom/whip/glitch/flash/drop cycle; set `in` to override.
 
 Keep the reel's files outside the user's repo (scratchpad or a reels folder).
 
