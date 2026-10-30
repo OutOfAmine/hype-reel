@@ -38,10 +38,18 @@ Needs Node 18+, Python 3, and Chrome / Edge / Chromium installed (or `CHROME_PAT
 
 Then in Claude Code: `/hype-reel <url>` or just *"make a reel for my app"*.
 
+## Real footage, your voice
+
+- `scripts/record_site.mjs` records a real site loading and scrolling.
+- `scripts/record_term.mjs` + `render_term.mjs` record a real terminal session (Claude Code included) and replay it in xterm.js to an MP4.
+- `scripts/align_words.py` times every word of your own voice-over, so captions and cuts land on the words.
+- `theme.mode: "light"` for a clean paper/ink look, or the default dark one; fonts: Inter Tight, Instrument Serif, Anton, Montserrat, Unbounded.
+
 ## Scenes
 
 | scene | what happens |
 |---|---|
+| `clip` | real footage: screen recordings, a terminal session, any MP4, on a tilted card or full screen |
 | `slam` | words slam in with blur, RGB split, screen shake |
 | `mask` | a giant word filled with your product — the camera dives through it into the real screen |
 | `prompt` | a prompt types itself, the product flips out of the box in a burst |

@@ -25,7 +25,7 @@ try {
   page.on('pageerror', e => console.error('PAGE ERROR', e.message));
   page.on('console', m => { if (m.type() === 'error') console.error('CONSOLE', m.text()); });
   await page.setViewport({ width: 1080, height: 1920, deviceScaleFactor: 1 });
-  await page.goto(pathToFileURL(path.resolve(htmlFile)).href + '?render=1', { waitUntil: 'networkidle0', timeout: 120000 });
+  await page.goto(pathToFileURL(path.resolve(htmlFile)).href + '?render=1', { waitUntil: 'load', timeout: 120000 });
   await page.waitForFunction('window.__hype', { timeout: 60000 });
   const info = await page.evaluate(async () => { await window.__hype.ready; const h = window.__hype; return { W: h.W, H: h.H, fps: h.fps, duration: h.duration, audioPath: h.audioPath, scenes: h.scenes }; });
   await page.setViewport({ width: info.W, height: info.H, deviceScaleFactor: 1 });

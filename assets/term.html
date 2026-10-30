@@ -1,0 +1,36 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<title>Terminal replay</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Inter:wght@600&display=block" rel="stylesheet">
+<style>
+html, body { margin:0; background:transparent; overflow:hidden; }
+#win { position:absolute; left:0; top:0; width:1000px; border-radius:26px; overflow:hidden; background:#15141c; box-shadow:0 0 0 1.5px rgba(0,0,0,.08); }
+#bar { height:56px; display:flex; align-items:center; gap:10px; padding:0 22px; background:#22212b; font:600 18px Inter, system-ui; color:#a8a6b8; }
+#bar i { width:14px; height:14px; border-radius:9px; display:inline-block; }
+#bar span { margin-left:14px; }
+#t { padding:18px 18px 22px; }
+.xterm-viewport { overflow:hidden !important; }
+</style></head>
+<body>
+<div id="win"><div id="bar"><i style="background:#ff5f57"></i><i style="background:#febc2e"></i><i style="background:#28c840"></i><span id="title">Terminal</span></div><div id="t"></div></div>
+<script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+<script>
+(async () => {
+  const q = new URLSearchParams(location.search);
+  document.getElementById('title').textContent = q.get('title') || 'Terminal';
+  const cast = (await (await fetch(q.get('cast'))).text()).trim().split('\n').map(l => JSON.parse(l));
+  const head = cast[0], ev = cast.slice(1);
+  await document.fonts.load('400 20px "JetBrains Mono"'); await document.fonts.load('700 20px "JetBrains Mono"');
+  const term = new Terminal({ cols: head.width, rows: head.height, fontFamily: '"JetBrains Mono", monospace', fontSize: +(q.get('fs') || 26), lineHeight: 1.15, cursorBlink: false,
+    theme: { background: '#15141c', foreground: '#ecebf3', cursor: '#ecebf3' } });
+  term.open(document.getElementById('t'));
+  let i = 0;
+  const write = s => new Promise(r => term.write(s, r));
+  window.__term = {
+    duration: ev[ev.length - 1][0],
+    size: () => { const r = document.getElementById('win').getBoundingClientRect(); return { w: Math.ceil(r.width), h: Math.ceil(r.height) }; },
+    async seek(t) { let s = ''; while (i < ev.length && ev[i][0] <= t) s += ev[i++][2]; if (s) await write(s); await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r))); },
+  };
+})();
+</script></body></html>

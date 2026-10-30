@@ -6,7 +6,7 @@
 <title>__TITLE__</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@700;900&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800;900&family=JetBrains+Mono:wght@500;700&family=Unbounded:wght@700;900&family=Anton&family=Montserrat:wght@700;800;900&family=Bebas+Neue&family=Inter+Tight:wght@700;800;900&family=Instrument+Serif:ital@0;1&display=block" rel="stylesheet">
 <style>
 :root { --bg:#06050b; --fg:#ffffff; --accent:#8b5cff; --accent2:#22e3ff; --hot:#ff2e6e; --muted:#a9a6c4; color-scheme: dark; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg:#06050b; --fg:#ffffff; } }
@@ -20,14 +20,16 @@ body { font-family: Inter, system-ui, sans-serif; color: var(--fg); -webkit-font
 .center { position:absolute; left:50%; top:50%; }
 .persp { perspective: 1600px; perspective-origin: 50% 45%; }
 .p3d { transform-style: preserve-3d; }
-.disp { font-family: Unbounded, Inter, sans-serif; font-weight:900; letter-spacing:-0.02em; text-transform:uppercase; line-height:.98; }
-.acc { color: var(--accent2); }
+.disp { font-family: var(--font-display, Unbounded), Inter, sans-serif; font-weight: var(--disp-weight, 900); letter-spacing: var(--disp-ls, -0.02em); text-transform: var(--disp-tt, uppercase); line-height:.98; }
+.acc { color: var(--acc-color, var(--accent2)); font-family: var(--font-accent, inherit); font-style: var(--acc-style, normal); font-weight: var(--acc-weight, inherit); text-transform: var(--acc-tt, inherit); letter-spacing: var(--acc-ls, inherit); }
+.light .glass { background: rgba(255,255,255,.92); border:1px solid rgba(13,13,20,.08); color:#0d0d14 !important; box-shadow: 0 10px 30px rgba(13,13,20,.10); }
+.light .cap .w { text-shadow:none; }
 .word { display:inline-block; white-space:nowrap; will-change: transform, opacity, filter; }
 .strike { position:absolute; left:-4%; right:-4%; top:52%; height:.11em; background:var(--hot); border-radius:9px; transform-origin:left center; }
 .glass { background: linear-gradient(160deg, rgba(255,255,255,.14), rgba(255,255,255,.04)); border:1px solid rgba(255,255,255,.18); backdrop-filter: blur(14px); }
 .chip { border-radius:999px; padding:.45em 1em; font-weight:800; white-space:nowrap; }
 .shot { display:block; width:100%; height:auto; user-select:none; pointer-events:none; }
-.cap { position:absolute; left:0; right:0; text-align:center; font-weight:900; font-family: Inter, sans-serif; letter-spacing:-.01em; }
+.cap { position:absolute; left:0; right:0; text-align:center; font-weight:900; font-family: var(--font-cap, Inter), Inter, sans-serif; letter-spacing:-.01em; }
 .cap .w { display:inline-block; margin: 0 .16em; padding: .02em .16em; border-radius:.18em; text-shadow: 0 .06em 0 rgba(0,0,0,.55), 0 0 .5em rgba(0,0,0,.5); }
 .ui { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:8px; z-index:9; transition: opacity .3s; }
 .ui button { font: 700 13px Inter, sans-serif; color:#fff; background:rgba(20,18,30,.75); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:9px 14px; cursor:pointer; backdrop-filter: blur(8px); }
@@ -60,6 +62,16 @@ const VERT = H > W * 1.2;
 const U = Math.min(W, H) / 1080;
 const TH = STORY.theme || {};
 for (const k of ['bg', 'fg', 'accent', 'accent2', 'hot', 'muted']) if (TH[k]) document.documentElement.style.setProperty('--' + k, TH[k]);
+const FONTS = { 'Inter Tight': { w: 800, ls: '-0.045em', dw: .8, tt: 'none' }, Unbounded: { w: 900, ls: '-0.02em', dw: 1 }, Anton: { w: 400, ls: '0.01em', dw: .62 }, 'Bebas Neue': { w: 400, ls: '0.02em', dw: .56 }, Montserrat: { w: 900, ls: '-0.03em', dw: .9 }, Inter: { w: 900, ls: '-0.03em', dw: .84 } };
+const DF = FONTS[TH.display] || FONTS.Unbounded, DW = DF.dw;
+const rootStyle = document.documentElement.style;
+if (TH.display) { rootStyle.setProperty('--font-display', `"${TH.display}"`); rootStyle.setProperty('--disp-weight', DF.w); rootStyle.setProperty('--disp-ls', DF.ls); if (DF.tt) rootStyle.setProperty('--disp-tt', DF.tt); }
+if (TH.accentFont) { rootStyle.setProperty('--font-accent', `"${TH.accentFont}"`); rootStyle.setProperty('--acc-style', 'italic'); rootStyle.setProperty('--acc-weight', 400); rootStyle.setProperty('--acc-tt', 'none'); rootStyle.setProperty('--acc-ls', '-.01em'); }
+// light mode: paper background, ink text; dark-mode-only effects are swapped for their light equivalents
+const LIGHT = TH.mode === 'light';
+if (LIGHT) { for (const [k, v] of Object.entries({ bg: '#f6f4ef', fg: '#0d0d14', muted: '#6b6a78' })) if (!TH[k]) rootStyle.setProperty('--' + k, v); rootStyle.setProperty('--acc-color', TH.accentText || 'var(--accent)'); }
+const INK = LIGHT ? '#0d0d14' : '#fff';
+if (TH.caption) rootStyle.setProperty('--font-cap', `"${TH.caption}"`);
 const C = k => getComputedStyle(document.documentElement).getPropertyValue('--' + k).trim();
 document.title = STORY.title || document.title;
 // where scenes may put their main content; the bottom third is kept for captions + the app's own buttons
@@ -105,7 +117,7 @@ function tokens(s) {
 const plain = s => String(s || '').replace(/[*~]/g, '');
 
 /* ---------- timeline ---------- */
-const DUR = { tunnel: 4.4, mask: 3.6, slam: 2.6, screen: 6, exploded: 4.5, wall: 4, orbit: 4.5, wipe: 4.4, counter: 3.4, fan: 4, prompt: 5, end: 3.6 };
+const DUR = { clip: 2, tunnel: 4.4, mask: 3.6, slam: 2.6, screen: 6, exploded: 4.5, wall: 4, orbit: 4.5, wipe: 4.4, counter: 3.4, fan: 4, prompt: 5, end: 3.6 };
 const TRANS = ['zoom', 'whip', 'glitch', 'flash', 'drop'];
 let acc = 0;
 const scenes = STORY.scenes.map((s, i) => {
@@ -135,7 +147,7 @@ const At = ({ t0, children }) => { const c = useContext(Ctx); return html`<${Ctx
 /* ---------- shared pieces ---------- */
 function Headline({ text, y = SAFE.top + 10, size = 74, delay = 0 }) {
   const toks = tokens(text);
-  return html`<div className="abs disp" style=${{ left: 60 * U, right: 60 * U, top: y, textAlign: 'center', fontSize: size * U }}>
+  return html`<div className="abs disp" style=${{ left: 60 * U, right: 60 * U, top: y, textAlign: 'center', fontSize: size * U / Math.sqrt(DW) }}>
     ${toks.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ marginRight: '.28em', position: 'relative' }}
       f=${t => { const d = delay + i * .07, p = sp(t, d, 260, 20); return { opacity: clamp((t - d) * 7), transform: `translateY(${px((1 - p) * 60)}) rotate(${((1 - p) * (rnd(i) - .5) * 14).toFixed(2)}deg)`, filter: `blur(${px(Math.max(0, 1 - (t - d) / .2) * 10)})` }; }}>${tk.text}${tk.strike && html`<${Strike} at=${delay + i * .07 + .45} />`}<//>`)}
   </div>`;
@@ -176,9 +188,9 @@ function Slam({ sc }) {
   const lines = sc.lines || [sc.text || ''];
   const gap = sc.gap || .3;
   let k = 0; const hits = [];
-  const rows = lines.map((ln, li) => tokens(ln).map(tk => { const d = .12 + k * gap + li * .12; hits.push(d); k++; return { ...tk, d }; }));
+  const rows = lines.map((ln, li) => tokens(ln).map(tk => { const d = sc.times && sc.times[k] != null ? sc.times[k] : .12 + k * gap + li * .12; hits.push(d); k++; return { ...tk, d }; }));
   const longest = Math.max(...lines.map(l => plain(l).length));
-  const size = Math.min(160, (VERT ? 960 : 1500) / (longest * .66)) * U;
+  const size = Math.min(160 / Math.sqrt(DW), (VERT ? 960 : 1500) / (longest * .66 * DW)) * U;
   return html`<div className="fill">
     <${A} className="abs" style=${{ left: CX - H, top: CY - H, width: 2 * H, height: 2 * H, background: `repeating-conic-gradient(from 0deg, ${C('accent')}22 0deg 6deg, transparent 6deg 18deg)`, borderRadius: '50%' }}
       f=${t => ({ transform: `rotate(${(t * 14).toFixed(2)}deg) scale(${(1 + .08 * Math.sin(t * 3)).toFixed(3)})`, opacity: clamp(t * 2) * .9 })} />
@@ -295,7 +307,7 @@ function Exploded({ sc }) {
             const group = `scale(${lerp(.3, 1, e).toFixed(3)}) rotateX(${(lerp(70, 0, e) + p * 16).toFixed(2)}deg) rotateY(${(p * -24 + Math.sin(t) * 4 * p).toFixed(2)}deg) rotateZ(${(p * -4).toFixed(2)}deg)`;
             return { opacity: clamp(t * 5), transform: `${group} translate3d(${px((k % 2 ? 1 : -1) * 46 * p * U + Math.sin(t * 1.7 + k) * 8 * p)},${px((k - mid) * 70 * p * U)},${px((k - mid) * 110 * p * U)})`, boxShadow: `0 0 0 ${p > .05 ? 1.5 : 0}px ${C('accent2')}aa, 0 ${px(30 * p)} ${px(60 * p)} rgba(0,0,0,${(.55 * p).toFixed(2)})` }; }}>
           <div className="fill" style=${{ overflow: 'hidden', borderRadius: 'inherit' }}><img src=${img.src} style=${{ position: 'absolute', left: 0, top: -k * sh, width: cw, height: fullH }} /></div>
-          ${lab && html`<${A} className="abs chip glass" style=${{ left: '100%', top: '50%', fontSize: 30 * U, color: '#fff', marginLeft: 26 * U }}
+          ${lab && html`<${A} className="abs chip glass" style=${{ left: '100%', top: '50%', fontSize: 30 * U, color: INK, marginLeft: 26 * U }}
             f=${t => { const p = amt(t), a = clamp((p - .55) * 4); return { opacity: a, transform: `translate(${(k % 2 ? 0 : -cw - 52 * U - 100 * 0)}px,-50%) translateX(${k % 2 ? '0%' : '-100%'}) scale(${lerp(.5, 1, a).toFixed(3)})` }; }}>${lab.text}<//>`}
         <//>`; })}
     </div>
@@ -321,7 +333,7 @@ function Wall({ sc }) {
         ${c.list.map((im, k) => html`<div key=${k} style=${{ width: cardW, height: c.hts[k], borderRadius: 18 * U, overflow: 'hidden', flex: 'none', boxShadow: `0 20px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(255,255,255,.14)`, background: `url(${im.src}) top center / cover` }} />`)}
       <//>`)}
     <//>
-    <div className="fill" style=${{ background: `radial-gradient(ellipse at 50% ${(CY / H * 100).toFixed(0)}%, rgba(4,3,10,.82) 0%, rgba(4,3,10,.35) 45%, transparent 75%)` }} />
+    <div className="fill" style=${{ background: LIGHT ? `radial-gradient(ellipse at 50% ${(CY / H * 100).toFixed(0)}%, rgba(246,244,239,.94) 0%, rgba(246,244,239,.55) 45%, transparent 75%)` : `radial-gradient(ellipse at 50% ${(CY / H * 100).toFixed(0)}%, rgba(4,3,10,.82) 0%, rgba(4,3,10,.35) 45%, transparent 75%)` }} />
     ${sc.title && html`<${Headline} text=${sc.title} y=${CY - 120 * U} size=${96} delay=${.35} />`}
   </div>`;
 }
@@ -342,7 +354,7 @@ function Orbit({ sc }) {
       f=${t => { const a = i / n * Math.PI * 2 + t * (sc.speed || .55), dep = Math.sin(a), pop = sp(t, .3 + i * .08, 240, 14);
         const act = Math.floor((t - 1.2) / step) % n === i && t > 1.2; const r = R * lerp(.2, 1, pop);
         return { transform: `translate(-50%,-50%) translate(${px(Math.cos(a) * r)},${px(dep * tiltY)}) scale(${(lerp(.62, 1.12, (dep + 1) / 2) * (act ? 1.22 : 1) * pop).toFixed(3)})`, zIndex: Math.round(dep * 50) + 60, opacity: lerp(.4, 1, (dep + 1) / 2),
-          background: act ? C('accent2') : '', color: act ? '#04030a' : '#fff', boxShadow: act ? `0 0 60px ${C('accent2')}` : 'none' }; }}>${it}<//>`)}
+          background: act ? C('accent2') : '', color: act ? '#04030a' : INK, boxShadow: act ? `0 0 60px ${C('accent2')}` : 'none' }; }}>${it}<//>`)}
   </div>`;
 }
 
@@ -373,7 +385,7 @@ function Counter({ sc }) {
   const to = +sc.value || 0, from = +sc.from || 0, dec = sc.decimals || 0, hit = 1.7;
   const fmt = v => (sc.prefix || '') + v.toLocaleString('en-US', { minimumFractionDigits: dec, maximumFractionDigits: dec }) + (sc.suffix || '');
   const len = fmt(to).length;
-  const size = Math.min(320, (VERT ? 980 : 1500) / (len * .78)) * U;
+  const size = Math.min(320, (VERT ? 980 : 1500) / (len * .78 * DW)) * U;
   return html`<div className="fill">
     ${sc.title && html`<${Headline} text=${sc.title} size=${62} delay=${.1} />`}
     <${Rings} at=${hit} n=${4} size=${380 * U} />
@@ -426,13 +438,13 @@ function Prompt({ sc }) {
 
 function End({ sc }) {
   const toks = tokens(sc.title || STORY.title || '');
-  const size = Math.min(150, (VERT ? 940 : 1400) / (Math.max(...plain(sc.title || '').split(' ').map(w => w.length), 4) * .86)) * U;
+  const size = Math.min(150 / Math.sqrt(DW), (VERT ? 940 : 1400) / (Math.max(...plain(sc.title || '').split(' ').map(w => w.length), 4) * .86 * DW)) * U;
   return html`<div className="fill">
     <${Rings} at=${.2} n=${4} size=${420 * U} y=${CY - 120 * U} />
     ${sc.logo && html`<${A} className="abs" style=${{ left: CX - 110 * U, top: CY - 380 * U, width: 220 * U, height: 220 * U }}
       f=${t => { const p = sp(t, .05, 200, 11); return { transform: `scale(${p.toFixed(3)}) rotate(${((1 - p) * 120).toFixed(1)}deg)` }; }}><img src=${sc.logo.src} style=${{ width: '100%', height: '100%', objectFit: 'contain', filter: `drop-shadow(0 0 50px ${C('accent')})` }} /><//>`}
     <div className="abs disp" style=${{ left: 40, right: 40, top: CY + (sc.logo ? 30 : -60) * U, transform: 'translateY(-50%)', textAlign: 'center', fontSize: size }}>
-      ${toks.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ margin: '0 .14em', background: tk.acc ? 'none' : `linear-gradient(100deg, #fff 40%, ${C('accent2')} 50%, #fff 60%) 0 0 / 300% 100%`, WebkitBackgroundClip: tk.acc ? '' : 'text', backgroundClip: tk.acc ? '' : 'text', color: tk.acc ? '' : 'transparent' }}
+      ${toks.map((tk, i) => html`<${A} key=${i} className=${'word' + (tk.acc ? ' acc' : '')} style=${{ margin: '0 .14em', background: tk.acc ? 'none' : `linear-gradient(100deg, ${INK} 40%, ${C(LIGHT ? 'accent' : 'accent2')} 50%, ${INK} 60%) 0 0 / 300% 100%`, WebkitBackgroundClip: tk.acc ? '' : 'text', backgroundClip: tk.acc ? '' : 'text', color: tk.acc ? '' : 'transparent' }}
         f=${t => { const d = .25 + i * .09, p = sp(t, d, 300, 14); return { opacity: clamp((t - d) * 6), transform: `translateY(${px((1 - p) * 80)}) scale(${lerp(1.6, 1, p).toFixed(3)})`, filter: `blur(${px(Math.max(0, 1 - (t - d) / .2) * 12)})`, backgroundPosition: `${(100 - E.inOut(prog(t, 1.1, 2.0)) * 100).toFixed(1)}% 0` }; }}>${tk.text}<//>`)}
     </div>
     ${sc.cta && html`<${A} className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 150 * U, textAlign: 'center' }}
@@ -440,6 +452,34 @@ function End({ sc }) {
       <span className="chip" style=${{ display: 'inline-block', background: C('accent'), color: '#fff', fontSize: 44 * U, padding: `${18 * U}px ${40 * U}px`, boxShadow: `0 0 70px ${C('accent')}` }}>${tokens(sc.cta).map((tk, i) => html`<span key=${i} style=${tk.acc ? { color: '#04030a', background: C('accent2'), borderRadius: 12, padding: '0 .3em', margin: '0 .1em' } : null}>${tk.text} </span>`)}</span><//>`}
     ${sc.handle && html`<${A} className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 30 * U, textAlign: 'center', fontSize: 34 * U, fontWeight: 700, color: C('muted') }} f=${t => ({ opacity: clamp((t - 1.4) * 3) })}>${sc.handle}<//>`}
     <${Burst} at=${.3} y=${CY - 120 * U} n=${40} />
+  </div>`;
+}
+
+// a real video (e.g. a demo recording) slammed in on a tilted card; frame-exact in render mode
+function Clip({ sc }) {
+  const { T, t0 } = useContext(Ctx);
+  const ref = useRef(null);
+  const full = !!sc.full;
+  let h = full ? H : Math.min(CH * 1.02, 1180 * U), w = full ? W : h * (sc.aspect || 9 / 16);
+  if (!full && w > W - 70 * U) { w = W - 70 * U; h = w / sc.aspect; }
+  const from = sc.from || 0, rate = sc.rate || 1, side = sc.i % 2 ? 1 : -1;
+  useLayoutEffect(() => {
+    const v = ref.current;
+    const sync = x => { const want = Math.max(0, from + (x - t0) * rate); if (RENDER) v.dataset.want = want.toFixed(3); else { v.playbackRate = rate; if (Math.abs(v.currentTime - want) > .3) v.currentTime = want; if (v.paused) v.play().catch(() => {}); } };
+    sync(T.get());
+    return T.on('change', sync);
+  }, []);
+  return html`<div className="fill persp">
+    <${A} className="abs" style=${{ left: CX - w / 2, top: full ? 0 : CY - h / 2, width: w, height: h, borderRadius: full ? 0 : 34 * U, overflow: 'hidden', background: '#000', boxShadow: `0 0 0 3px rgba(255,255,255,.22), 0 50px 140px rgba(0,0,0,.7), 0 0 160px -20px ${C('accent')}` }}
+      f=${t => { const p = sp(t, 0, 260, 15), e = t > 0 ? Math.exp(-t * 7) : 1; const s = shake(t, [0, .05], 22 * U);
+        if (full) return { transform: `translate(${px(s.x)},${px(s.y)}) scale(${(lerp(1.25, 1.02, E.out(clamp(t / .35))) + t * .012).toFixed(4)})`, filter: e > .02 ? `drop-shadow(${px(e * 30)} 0 0 rgba(255,46,110,.9)) drop-shadow(${px(-e * 30)} 0 0 rgba(34,227,255,.9))` : 'none', borderRadius: 0 };
+        return { transform: `translate(${px(s.x)},${px(s.y + (1 - p) * 260 * U)}) scale(${(lerp(1.5, 1, p) + Math.max(0, t - .4) * .015).toFixed(3)}) rotateY(${(side * lerp(35, 7, p)).toFixed(2)}deg) rotateZ(${(side * lerp(-14, -2.5, p)).toFixed(2)}deg)`, filter: e > .02 ? `drop-shadow(${px(e * 24)} 0 0 rgba(255,46,110,.9)) drop-shadow(${px(-e * 24)} 0 0 rgba(34,227,255,.9))` : 'none' }; }}>
+      <video ref=${ref} src=${sc.video} muted playsInline preload="auto" style=${{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: sc.position || 'top', display: 'block' }} />
+    <//>
+    ${rate > 1.5 && html`<div className="abs chip" style=${{ right: 60 * U, top: SAFE.top + 10 * U, background: C('hot'), color: '#fff', fontSize: 30 * U, fontFamily: '"JetBrains Mono", monospace' }}>▶▶ ${rate}x</div>`}
+    ${full && sc.mask !== false && html`<div className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 60 * U, bottom: 0, background: `linear-gradient(transparent, ${C('bg')} ${(90 * U).toFixed(0)}px)` }} />`}
+    ${sc.label && html`<${A} className="abs chip" style=${{ left: CX, top: full ? SAFE.top + 70 * U : CY - h / 2 - 30 * U, background: C('accent2'), color: '#04030a', fontSize: 44 * U, boxShadow: '0 16px 50px rgba(0,0,0,.5)' }}
+      f=${t => { const p = sp(t, .12, 380, 14); return { opacity: clamp((t - .12) * 8), transform: `translate(-50%,-50%) scale(${lerp(2.4, 1, p).toFixed(3)}) rotate(${(side * lerp(-16, -4, p)).toFixed(2)}deg)` }; }}>${sc.label}<//>`}
   </div>`;
 }
 
@@ -462,19 +502,19 @@ function Tunnel({ sc }) {
 // a giant word filled with the product, then the camera dives through a letter into the real screen
 function Mask({ sc }) {
   const img = sc.image, word = plain(sc.word || 'NEW'), dive = sc.dive ?? 1.5;
-  const size = Math.min(420, (VERT ? 1000 : 1700) / (word.length * .92)) * U;
+  const size = Math.min(420, (VERT ? 1000 : 1700) / (word.length * .92 * DW)) * U;
   return html`<div className="fill">
     <${A} className="fill" style=${{ background: `url(${img.src}) top center / cover` }}
       f=${t => { const q = E.inOut(prog(t, dive + .25, dive + .8)); return { opacity: q, transform: `scale(${lerp(1.5, 1.05, q) + Math.max(0, t - dive - .8) * .02})`, filter: q < 1 ? `blur(${px((1 - q) * 18)})` : 'none' }; }} />
     <${A} className="abs disp" style=${{ left: 0, right: 0, top: CY, textAlign: 'center', fontSize: size, lineHeight: 1, backgroundImage: `url(${img.src})`, backgroundSize: 'cover', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent', WebkitTextStroke: `${2 * U}px rgba(255,255,255,.5)`, transformOrigin: `${sc.origin || '50% 50%'}` }}
       f=${t => { const p = sp(t, 0, 160, 13), z = Math.pow(prog(t, dive, dive + .75), 3);
         return { transform: `translateY(-50%) scale(${(lerp(.4, 1, p) * (1 + z * 30)).toFixed(3)}) rotate(${((1 - p) * -8).toFixed(2)}deg)`, backgroundPosition: `${(50 + Math.sin(t * 1.3) * 40).toFixed(1)}% ${(t * 18 % 100).toFixed(1)}%`, opacity: 1 - clamp((z - .6) * 4), filter: `drop-shadow(0 0 ${px(40 * U)} ${C('accent')})` }; }}>${word}<//>
-    ${sc.caption && html`<${A} className="abs chip glass" style=${{ left: '50%', top: SAFE.top + 40 * U, fontSize: 40 * U, color: '#fff' }}
+    ${sc.caption && html`<${A} className="abs chip glass" style=${{ left: '50%', top: SAFE.top + 40 * U, fontSize: 40 * U, color: INK }}
       f=${t => { const p = sp(t, dive + .9, 260, 14); return { opacity: clamp((t - dive - .9) * 5), transform: `translateX(-50%) scale(${p.toFixed(3)})` }; }}>${sc.caption}<//>`}
   </div>`;
 }
 
-const SCENES = { tunnel: Tunnel, mask: Mask, slam: Slam, screen: Screen, exploded: Exploded, wall: Wall, orbit: Orbit, wipe: Wipe, counter: Counter, fan: Fan, prompt: Prompt, end: End };
+const SCENES = { clip: Clip, tunnel: Tunnel, mask: Mask, slam: Slam, screen: Screen, exploded: Exploded, wall: Wall, orbit: Orbit, wipe: Wipe, counter: Counter, fan: Fan, prompt: Prompt, end: End };
 
 /* ---------- transitions in (every scene enters with a hit) ---------- */
 const TIN = .42;
@@ -500,7 +540,23 @@ function SceneHost({ sc }) {
 }
 
 /* ---------- background, grain, captions ---------- */
+// light mode: warm paper, a soft dot grid, two pale colour washes, and editor-style frame marks + timecode
+function LightBackground() {
+  const mark = (x, y, rx, ry) => html`<div className="abs" style=${{ left: x, top: y, width: 34 * U, height: 34 * U, borderLeft: rx ? 'none' : '2px solid rgba(13,13,20,.28)', borderRight: rx ? '2px solid rgba(13,13,20,.28)' : 'none', borderTop: ry ? 'none' : '2px solid rgba(13,13,20,.28)', borderBottom: ry ? '2px solid rgba(13,13,20,.28)' : 'none' }} />`;
+  const m = 34 * U, e = 34 * U;
+  return html`<div className="fill">
+    ${[['accent', .15, .2], ['hot', .85, .7]].map(([c, x, y], i) => html`<${A} key=${i} className="abs" style=${{ left: x * W - 500 * U, top: y * H - 500 * U, width: 1000 * U, height: 1000 * U, borderRadius: '50%', background: C(c), filter: `blur(${200 * U}px)`, opacity: .13 }}
+      f=${t => ({ transform: `translate(${px(Math.sin(t * .3 + i) * 120 * U)},${px(Math.cos(t * .25 + i) * 160 * U)})` })} />`)}
+    <${A} className="fill" style=${{ backgroundImage: 'radial-gradient(rgba(13,13,20,.16) 1.6px, transparent 1.8px)', backgroundSize: `${44 * U}px ${44 * U}px` }}
+      f=${t => ({ backgroundPosition: `0 ${px(-(t * 14 * U) % (44 * U))}` })} />
+    ${mark(m, m, 0, 0)}${mark(W - m - e, m, 1, 0)}${mark(m, H - m - e, 0, 1)}${mark(W - m - e, H - m - e, 1, 1)}
+    <${A} className="abs" style=${{ left: m + 50 * U, top: m + 4 * U, font: `600 ${22 * U}px "JetBrains Mono", monospace`, color: 'rgba(13,13,20,.5)', letterSpacing: '.06em' }}
+      f=${t => { const f = Math.floor(t * 30); return { _text: `● REC  00:${String(Math.floor(t)).padStart(2, '0')}:${String(f % 30).padStart(2, '0')}` }; }} />
+    <div className="abs" style=${{ right: m + 50 * U, top: m + 4 * U, font: `600 ${22 * U}px "JetBrains Mono", monospace`, color: 'rgba(13,13,20,.5)', letterSpacing: '.06em' }}>${(STORY.format || '9:16')} · 30FPS</div>
+  </div>`;
+}
 function Background() {
+  if (LIGHT) return html`<${LightBackground} />`;
   const blobs = [['accent', .18, .22, 1], ['accent2', .82, .35, 1.3], ['hot', .5, .78, .8]];
   return html`<div className="fill">
     ${blobs.map(([c, x, y, s], i) => html`<${A} key=${i} className="abs" style=${{ left: x * W - 450 * U, top: y * H - 450 * U, width: 900 * U, height: 900 * U, borderRadius: '50%', background: C(c), filter: `blur(${170 * U}px)`, opacity: .33 }}
@@ -518,7 +574,7 @@ const Grain = () => html`<${A} className="fill" style=${{ backgroundImage: NOISE
 
 // word timings: from STORY.words ([{w, s, e}] in seconds, from a voice take) or spread over each scene's `say`
 function buildWords() {
-  if (Array.isArray(STORY.words) && STORY.words.length) return STORY.words.map(w => ({ w: w.w, s: w.s, e: w.e, acc: /^\*.*\*$/.test(w.w) }));
+  if (Array.isArray(STORY.words) && STORY.words.length) return STORY.words.map((w, i, a) => ({ w: w.w, s: w.s, e: w.e, acc: /^\*.*\*$/.test(w.w), brk: i > 0 && w.line != null && w.line !== a[i - 1].line }));
   const out = [];
   for (const sc of scenes) {
     const toks = tokens(sc.say || ''); if (!toks.length) continue;
@@ -542,13 +598,14 @@ function Captions() {
   const { T } = useContext(Ctx);
   const pg = React.useMemo(() => pages(buildWords()), []);
   const [i, setI] = useState(-1);
-  useEffect(() => { const f = v => setI(pg.findIndex(p => v >= p.s && v < p.e)); f(T.get()); return T.on('change', f); }, []);
+  const [top, setTop] = useState(false);
+  useEffect(() => { const f = v => { setI(pg.findIndex(p => v >= p.s && v < p.e)); setTop(scenes[sceneAt(v)].captions === 'top'); }; f(T.get()); return T.on('change', f); }, []);
   if (i < 0 || STORY.captions === false) return null;
   const p = pg[i], size = (VERT ? 62 : 54) * U;
-  return html`<div className="cap" style=${{ top: VERT ? SAFE.bottom + 70 * U : H - 150 * U, fontSize: size, direction: STORY.rtl ? 'rtl' : 'ltr' }}>
+  return html`<div className="cap" style=${{ top: top ? SAFE.top + 40 * U : VERT ? SAFE.bottom + 70 * U : H - 150 * U, fontSize: size, direction: STORY.rtl ? 'rtl' : 'ltr' }}>
     <${At} t0=${0}>${p.ws.map((w, k) => html`<${A} key=${i + '-' + k} as="span" className="w"
       f=${t => { const on = t >= w.s, cur = on && (t < w.e || k === p.ws.length - 1 && t < p.e), pop = sp(t, w.s, 420, 18);
-        return { opacity: on ? 1 : .0, transform: `translateY(${px((1 - Math.min(1, pop)) * 30)}) scale(${(on ? lerp(.6, 1, pop) * (cur ? 1.08 : 1) : .6).toFixed(3)}) rotate(${cur ? '-2deg' : '0deg'})`, background: cur ? C('accent') : 'transparent', color: !cur && w.acc ? C('accent2') : '#fff' }; }}>${plain(w.w)}<//>`)}<//>
+        return { opacity: on ? 1 : .0, transform: `translateY(${px((1 - Math.min(1, pop)) * 30)}) scale(${(on ? lerp(.6, 1, pop) * (cur ? 1.08 : 1) : .6).toFixed(3)}) rotate(${cur ? '-2deg' : '0deg'})`, background: cur ? C('accent') : 'transparent', color: cur ? '#fff' : w.acc ? C(LIGHT ? 'accent' : 'accent2') : INK }; }}>${plain(w.w)}<//>`)}<//>
   </div>`;
 }
 
@@ -583,8 +640,18 @@ function App() {
     window.__hype = {
       W, H, fps: STORY.fps || 30, duration: TOTAL, audioPath: STORY._audioPath || null,
       scenes: scenes.map(s => ({ type: s.type, start: s.start, dur: s.dur })),
-      ready: (async () => { await Promise.all(['900 60px Inter', '800 60px Inter', '700 60px Inter', '900 60px Unbounded', '700 60px Unbounded', '600 40px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); return true; })(),
-      async seek(t) { T.set(t); await raf2(); await Promise.all([...document.querySelectorAll('img')].map(i => i.complete ? i.decode().catch(() => {}) : new Promise(r => { i.onload = i.onerror = r; }))); await raf2(); },
+      ready: (async () => { await Promise.all(['900 60px Inter', '800 60px Inter', '700 60px Inter', '900 60px Unbounded', '700 60px Unbounded', '400 60px Anton', '400 60px "Bebas Neue"', '900 60px Montserrat', '800 60px Montserrat', '600 40px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); return true; })(),
+      async seek(t) {
+        T.set(t); await raf2();
+        await Promise.all([...document.querySelectorAll('img')].map(i => i.complete ? i.decode().catch(() => {}) : new Promise(r => { i.onload = i.onerror = r; })));
+        T.set(t + 1e-6); // re-notify so freshly mounted clips get their frame time
+        for (const v of document.querySelectorAll('video[data-want]')) {
+          if (v.readyState < 1) await new Promise(r => v.addEventListener('loadedmetadata', r, { once: true }));
+          const want = Math.min(+v.dataset.want, (v.duration || 1e9) - .05);
+          if (Math.abs(v.currentTime - want) > .001) { v.currentTime = want; await new Promise(r => v.addEventListener('seeked', r, { once: true })); }
+        }
+        await raf2();
+      },
     };
   }, []);
   useEffect(() => { if (RENDER) return; let h; const show = () => { setUi(u => ({ ...u, show: true })); clearTimeout(h); h = setTimeout(() => setUi(u => ({ ...u, show: false })), 2200); }; show(); addEventListener('pointermove', show); return () => removeEventListener('pointermove', show); }, []);
@@ -594,14 +661,14 @@ function App() {
   const beats = STORY.beats || [];
   const sc = scenes[idx];
   return html`<${Ctx.Provider} value=${{ T, t0: 0 }}>
-    <div className="stage" style=${{ width: W, height: H, transform: `scale(${scale})` }} onClick=${RENDER ? null : toggle}>
+    <div className=${"stage" + (LIGHT ? " light" : "")} style=${{ width: W, height: H, transform: `scale(${scale})` }} onClick=${RENDER ? null : toggle}>
       <${Background} />
       <${A} className="fill" f=${t => { const b = beats.reduce((s, x) => s + (t >= x && t - x < .5 ? Math.exp(-(t - x) * 12) : 0), 0); return { transform: `scale(${(1 + b * .03).toFixed(4)})` }; }}>
         <${SceneHost} key=${sc.i} sc=${sc} />
       <//>
       <${Captions} />
-      <div className="fill" style=${{ background: 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%)', pointerEvents: 'none' }} />
-      <${Grain} />
+      <div className="fill" style=${{ background: LIGHT ? 'radial-gradient(ellipse at center, transparent 60%, rgba(120,110,90,.10) 100%)' : 'radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.55) 100%)', pointerEvents: 'none' }} />
+      ${!LIGHT && html`<${Grain} />`}
       ${STORY.progress !== false && html`<${A} className="abs" style=${{ left: 0, top: 0, height: 6 * U, background: `linear-gradient(90deg, ${C('accent')}, ${C('accent2')})`, width: W, transformOrigin: 'left' }} f=${t => ({ transform: `scaleX(${clamp(t / TOTAL).toFixed(4)})` })} />`}
     </div>
     ${STORY.audio && !RENDER && html`<audio ref=${audio} src=${STORY.audio} muted preload="auto" />`}

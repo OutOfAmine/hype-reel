@@ -20,7 +20,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 TEMPLATE = HERE.parent / "assets" / "player.html"
 NEEDS = {
-    "tunnel": ["images"], "mask": ["image", "word"],
+    "clip": ["video"], "tunnel": ["images"], "mask": ["image", "word"],
     "slam": ["lines"], "screen": ["image"], "exploded": ["image"], "wall": ["images"], "orbit": ["items"],
     "wipe": ["before", "after"], "counter": ["value"], "fan": ["images"], "prompt": ["prompt"], "end": ["title"],
 }
@@ -110,7 +110,7 @@ def check(story):
     types = [s.get("type") for s in scenes]
     if not {"screen", "exploded", "wipe", "fan", "wall", "tunnel", "mask"} & set(types):
         warns.append("no scene shows the product's real screen (screen / exploded / wipe / fan / wall)")
-    if types[0] not in ("slam", "prompt", "screen", "wall", "mask", "tunnel"):
+    if types[0] not in ("slam", "prompt", "screen", "wall", "mask", "tunnel", "clip"):
         warns.append("open on a hook: slam, mask, prompt, screen, tunnel or wall")
     if types[-1] != "end":
         warns.append("finish on an 'end' scene with the call to action")
@@ -159,6 +159,8 @@ def main():
                 s[k] = inl.image(s[k], where)
         if s.get("images"):
             s["images"] = [inl.image(x, where) for x in s["images"]]
+        if s.get("video") and not (src.parent / s["video"]).is_file():
+            errors.append(f"{where}: video not found: {s['video']} (kept as a relative path, not inlined: render the MP4 next to the JSON)")
     if story.get("audio"):
         story["audio"], story["_audioPath"] = inl.audio(story["audio"])
     errors += inl.errors
