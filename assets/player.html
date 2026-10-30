@@ -640,7 +640,7 @@ function App() {
     window.__hype = {
       W, H, fps: STORY.fps || 30, duration: TOTAL, audioPath: STORY._audioPath || null,
       scenes: scenes.map(s => ({ type: s.type, start: s.start, dur: s.dur })),
-      ready: (async () => { await Promise.all(['900 60px Inter', '800 60px Inter', '700 60px Inter', '900 60px Unbounded', '700 60px Unbounded', '400 60px Anton', '400 60px "Bebas Neue"', '900 60px Montserrat', '800 60px Montserrat', '600 40px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); return true; })(),
+      ready: (async () => { const themed = [TH.display, TH.caption].filter(Boolean).flatMap(f => ['400', '700', '800', '900'].map(w => `${w} 60px "${f}"`)).concat(TH.accentFont ? [`italic 400 60px "${TH.accentFont}"`, `400 60px "${TH.accentFont}"`] : []); await Promise.all(themed.map(f => document.fonts.load(f, 'AaEffectsfi').catch(() => {}))); await Promise.all(['900 60px Inter', '800 60px Inter', '700 60px Inter', '900 60px Unbounded', '700 60px Unbounded', '400 60px Anton', '400 60px "Bebas Neue"', '900 60px Montserrat', '800 60px Montserrat', '600 40px "JetBrains Mono"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; await Promise.all([...document.images].map(i => i.decode().catch(() => {}))); return true; })(),
       async seek(t) {
         T.set(t); await raf2();
         await Promise.all([...document.querySelectorAll('img')].map(i => i.complete ? i.decode().catch(() => {}) : new Promise(r => { i.onload = i.onerror = r; })));
