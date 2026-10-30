@@ -27,11 +27,12 @@ node SKILL_DIR/scripts/capture.mjs <url> <dir>/shots --name app --click "#start,
 
 ## 2b. Record real footage (what makes it feel real)
 
-Screenshots alone look like a slideshow. Record the product actually working and cut to it with `clip` scenes:
+Screenshots alone look like a slideshow. Record the product actually working and cut to it with `clip` scenes. Show 9:16 footage `full: true` with a slow `zoom` so it reads on a phone, and zoom terminals onto the line that matters; never leave footage small in the middle of the frame:
 
 ```bash
 node SKILL_DIR/scripts/record_site.mjs <url> <dir>/site.mp4 --scroll 2400          # the real page loading, then a smooth scroll (mobile 1080x1920)
-KEYS='[[1.5,"npm run dev"]]' node SKILL_DIR/scripts/record_term.mjs <dir>/run.cast 30 <project> -- <shell or cli> [args]
+KEYS='[[1.5,"npm run dev
+"]]' node SKILL_DIR/scripts/record_term.mjs <dir>/run.cast 30 <project> -- <shell or cli> [args]
 node SKILL_DIR/scripts/render_term.mjs <dir>/run.cast <dir>/run.mp4 --title "Terminal"   # real terminal emulator replay -> MP4
 ```
 
@@ -63,6 +64,8 @@ Read `references/scenes.md` for every scene and field. A shape that hits:
 ```bash
 python SKILL_DIR/scripts/align_words.py voice.wav lines.txt words.json   # word times; lines.txt = what was said
 ```
+
+**Sound**: `python SKILL_DIR/scripts/sfx.py reel.json -o voice_sfx.wav` synthesises whooshes on cuts, impacts on slam words, pops on labels, shutters on screenshot walls (plus any scene `sfx`, like keyboard `typing` over a terminal clip) and mixes them under the voice; point `audio` at the result. Keep them under the voice (default peak -16 dBFS).
 
 Put `audio` and `words` in the storyboard and cut scenes on the words: each scene starts ~0.06 s before the word that introduces it, slams get `times` per word. If the script says "look at this video", leave a pause in the voice there (insert room tone) so the footage plays long enough to be seen.
 

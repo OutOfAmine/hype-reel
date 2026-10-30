@@ -474,7 +474,10 @@ function Clip({ sc }) {
       f=${t => { const p = sp(t, 0, 260, 15), e = t > 0 ? Math.exp(-t * 7) : 1; const s = shake(t, [0, .05], 22 * U);
         if (full) return { transform: `translate(${px(s.x)},${px(s.y)}) scale(${(lerp(1.25, 1.02, E.out(clamp(t / .35))) + t * .012).toFixed(4)})`, filter: e > .02 ? `drop-shadow(${px(e * 30)} 0 0 rgba(255,46,110,.9)) drop-shadow(${px(-e * 30)} 0 0 rgba(34,227,255,.9))` : 'none', borderRadius: 0 };
         return { transform: `translate(${px(s.x)},${px(s.y + (1 - p) * 260 * U)}) scale(${(lerp(1.5, 1, p) + Math.max(0, t - .4) * .015).toFixed(3)}) rotateY(${(side * lerp(35, 7, p)).toFixed(2)}deg) rotateZ(${(side * lerp(-14, -2.5, p)).toFixed(2)}deg)`, filter: e > .02 ? `drop-shadow(${px(e * 24)} 0 0 rgba(255,46,110,.9)) drop-shadow(${px(-e * 24)} 0 0 rgba(34,227,255,.9))` : 'none' }; }}>
-      <video ref=${ref} src=${sc.video} muted playsInline preload="auto" style=${{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: sc.position || 'top', display: 'block' }} />
+      <${A} className="fill" style=${{ transformOrigin: sc.origin || '50% 40%' }}
+        f=${t => { const [z0, z1] = sc.zoom || [1, 1.08], q = E.inOut(prog(t, sc.zoomAt || .15, sc.dur)); return { transform: `scale(${lerp(z0, z1, q).toFixed(4)})` }; }}>
+        <video ref=${ref} src=${sc.video} muted playsInline preload="auto" style=${{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: sc.position || 'top', display: 'block' }} />
+      <//>
     <//>
     ${rate > 1.5 && html`<div className="abs chip" style=${{ right: 60 * U, top: SAFE.top + 10 * U, background: C('hot'), color: '#fff', fontSize: 30 * U, fontFamily: '"JetBrains Mono", monospace' }}>▶▶ ${rate}x</div>`}
     ${full && sc.mask !== false && html`<div className="abs" style=${{ left: 0, right: 0, top: SAFE.bottom - 60 * U, bottom: 0, background: `linear-gradient(transparent, ${C('bg')} ${(90 * U).toFixed(0)}px)` }} />`}

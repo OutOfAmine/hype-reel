@@ -42,6 +42,7 @@ Then in Claude Code: `/hype-reel <url>` or just *"make a reel for my app"*.
 
 - `scripts/record_site.mjs` records a real site loading and scrolling.
 - `scripts/record_term.mjs` + `render_term.mjs` record a real terminal session (Claude Code included) and replay it in xterm.js to an MP4.
+- `scripts/sfx.py` synthesises the sound design (whooshes, impacts, pops, keyboard clicks, shutters, risers) from the storyboard and mixes it under the voice.
 - `scripts/align_words.py` times every word of your own voice-over, so captions and cuts land on the words.
 - `theme.mode: "light"` for a clean paper/ink look, or the default dark one; fonts: Inter Tight, Instrument Serif, Anton, Montserrat, Unbounded.
 

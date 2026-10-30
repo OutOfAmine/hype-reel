@@ -20,13 +20,13 @@ Top level of `reel.json`:
 | `fps` | render fps (30) |
 | `rtl` | `true` for Arabic captions |
 
-Every scene: `type`, `dur` (seconds), `say` (caption), `in` (`zoom`, `whip`, `glitch`, `flash`, `drop`, `cut`), `captions: "top"` (move captions to the top while footage has its own text at the bottom). Text fields accept `*accent*` and `~struck~`. Images are paths relative to the JSON.
+Every scene: `sfx` (extra sounds for `scripts/sfx.py`: `[{t, type, dur}]`, types whoosh, impact, glitch, pop, click, typing, enter, shutter, riser), `type`, `dur` (seconds), `say` (caption), `in` (`zoom`, `whip`, `glitch`, `flash`, `drop`, `cut`), `captions: "top"` (move captions to the top while footage has its own text at the bottom). Text fields accept `*accent*` and `~struck~`. Images are paths relative to the JSON.
 
 ## slam — kinetic hook
 `lines`: 1-3 short lines; each word slams in with blur, RGB split, screen shake and a white hit. `gap`: seconds between words (0.3), or `times`: one start per word (seconds into the scene) to hit exactly when the voice says it.
 
 ## clip — real footage
-`video` (MP4 path relative to the JSON, not inlined), `from` (start second in the source), `rate` (playback speed; above 1.5 shows a ▶▶ badge), `aspect` (width/height of the source: 0.5625 for 9:16, ~1.0 for a terminal from `render_term.mjs`), `full: true` (fills the frame; `mask: false` keeps the bottom of the footage visible), `position` (CSS object-position, `top` by default), `label` (chip). Use it for screen recordings: `record_site.mjs` (a real site loading and scrolling), `record_term.mjs` + `render_term.mjs` (a real terminal session, e.g. Claude Code running a command), or any demo video. Frame-exact in the MP4; the page only plays them when the videos sit next to it.
+`video` (MP4 path relative to the JSON, not inlined), `from` (start second in the source), `rate` (playback speed; above 1.5 shows a ▶▶ badge), `aspect` (width/height of the source: 0.5625 for 9:16, ~1.0 for a terminal from `render_term.mjs`), `full: true` (fills the frame; `mask: false` keeps the bottom of the footage visible), `position` (CSS object-position, `top` by default), `label` (chip), `zoom: [from, to]` + `origin` (CSS transform-origin) + `zoomAt` (start second) to push in on the part that matters, e.g. the line being typed in a terminal (`origin: "18% 88%"`). Use it for screen recordings: `record_site.mjs` (a real site loading and scrolling), `record_term.mjs` + `render_term.mjs` (a real terminal session, e.g. Claude Code running a command), or any demo video. Frame-exact in the MP4; the page only plays them when the videos sit next to it.
 
 ## mask — dive into a word
 `word`, `image`: a giant word filled with the moving screenshot; at `dive` (1.5 s) the camera dives through it into the full screen. `caption`: chip shown after the dive. `origin`: CSS transform-origin of the dive (`"38% 50%"` to aim at a letter).
