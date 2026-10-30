@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Product Promo</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&family=Inter:wght@500;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Instrument+Serif:ital@0;1&display=block" rel="stylesheet">
+<style>
+:root { --red:#ff2b2b; color-scheme: dark; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --red:#ff2b2b; } }
+:root[data-theme="dark"] { --red:#ff2b2b; }
+html, body { margin:0; height:100%; background:#000; overflow:hidden; }
+body { font-family: Inter, system-ui, sans-serif; color:#fff; -webkit-font-smoothing: antialiased; }
+#root { position:fixed; inset:0; display:grid; place-items:center; }
+.stage { position:relative; overflow:hidden; background:#050505; flex:none; transform-origin:center; }
+.abs { position:absolute; } .fill { position:absolute; inset:0; }
+.K { font-family: Archivo, sans-serif; font-weight: 900; font-stretch: 125%; letter-spacing: -.035em; line-height: .86; white-space: nowrap; text-transform: uppercase; }
+.S { font-family: "Instrument Serif", serif; font-style: italic; font-weight: 400; letter-spacing: -.01em; }
+.mono { font-family: "JetBrains Mono", monospace; }
+.ui { position:fixed; left:50%; bottom:18px; transform:translateX(-50%); display:flex; gap:8px; z-index:9; }
+.ui button { font: 700 13px Inter, sans-serif; color:#fff; background:rgba(20,18,30,.75); border:1px solid rgba(255,255,255,.2); border-radius:999px; padding:9px 14px; cursor:pointer; }
+.fail { color:#fff; font: 600 16px Inter, sans-serif; padding: 24px; text-align:center; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/framer-motion@11.11.17/dist/framer-motion.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/htm@3.1.1/dist/htm.umd.js"></script>
+<script>
+const WORDS = /*__WORDS__*/[];
+const LOGO = /*__LOGOS__*/{};
+const AUDIO = /*__AUDIO__*/null;
+const AUDIO_PATH = /*__AUDIO_PATH__*/null;
+const CFG = /*__CFG__*/{};
+(() => {
+const root = document.getElementById('root');
+if (!window.React || !window.Motion || !window.htm) { root.innerHTML = '<p class="fail">This reel needs an internet connection to load its animation libraries.</p>'; return; }
+const { useState, useEffect, useRef } = React;
+const { useMotionValue, useMotionValueEvent, cubicBezier } = Motion;
+const html = htm.bind(React.createElement);
+const RENDER = /[?&]render=1/.test(location.search);
+const W = 1080, H = 1920, RED = CFG.accent || '#ff2b2b', INK = '#070707', PAPER = '#f3f1ec', ORANGE = '#d97757';
+
+/* ---------- time helpers ---------- */
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, k) => a + (b - a) * k;
+const p = (t, a, d) => clamp((t - a) / d);
+const outExpo = cubicBezier(.16, 1, .3, 1), inExpo = cubicBezier(.7, 0, .84, 0), inOut = cubicBezier(.65, 0, .35, 1), outBack = cubicBezier(.34, 1.56, .64, 1);
+const sp = (t, a = 0, w = 20, z = 8) => { const x = t - a; return x <= 0 ? 0 : 1 - Math.exp(-z * x) * Math.cos(w * x); };   // spring settle
+const kick = (t, a, k = 14) => t < a ? 0 : Math.exp(-(t - a) * k);                                                           // decaying hit
+const fs = (txt, max, room = 940) => Math.min(max, room / (String(txt).length * .84));
+const rnd = s => { const x = Math.sin(s * 127.1 + 311.7) * 43758.5453; return x - Math.floor(x); };
+
+/* ---------- voice timeline: shot i = line i ---------- */
+const NL = Math.max(...WORDS.map(w => w.line)) + 1;
+const LW = Array.from({ length: NL }, (_, i) => WORDS.filter(w => w.line === i));
+const START = LW.map((ws, i) => i === 0 ? 0 : ws[0].s - .1);
+const TOTAL = WORDS[WORDS.length - 1].e + 1.1;
+const END = i => i + 1 < NL ? START[i + 1] : TOTAL;
+
+/* horizontal / vertical motion blur through an SVG filter that follows the frame */
+const Blur = ({ id, x = 0, y = 0 }) => html`<svg width="0" height="0" style=${{ position: 'absolute' }}><filter id=${id} x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation=${`${Math.max(0, x).toFixed(1)} ${Math.max(0, y).toFixed(1)}`} /></filter></svg>`;
+const blurred = (id, x, y) => (x > .4 || y > .4) ? `url(#${id})` : 'none';
+const Dot = ({ c = RED }) => html`<span style=${{ display: 'inline-block', width: '.16em', height: '.16em', borderRadius: '50%', background: c, marginLeft: '.05em' }} />`;
+const Img = ({ k, style }) => html`<img src=${LOGO[k]} style=${{ display: 'block', ...style }} />`;
+
+/* word that pops in at time a (seconds into the shot) */
+function Pop({ t, a, children, style, from = 'up', k = 1 }) {
+  const e = outExpo(p(t, a, .32)), id = 'pop' + Math.round(a * 1000) + (style && style.top || 0);
+  const tr = from === 'up' ? `translateY(${lerp(140 * k, 0, e)}px)` : from === 'left' ? `translateX(${lerp(-500 * k, 0, e)}px)` : from === 'right' ? `translateX(${lerp(500 * k, 0, e)}px)` : from === 'scale' ? `scale(${lerp(1.8, 1, sp(t, a, 22, 9))})` : `scaleX(${lerp(2.6, 1, e)})`;
+  const by = from === 'up' ? (1 - e) * 30 : 0, bx = from === 'left' || from === 'right' || from === 'stretch' ? (1 - e) * 40 : 0;
+  return html`<div style=${{ opacity: t >= a ? 1 : 0, transform: tr, filter: blurred(id, bx, by), ...style }}><${Blur} id=${id} x=${bx} y=${by} />${children}</div>`;
+}
+
+
+/* ---------- product promo: optional intro line -> promo shots in a video card -> optional CTA line ---------- */
+const HAS_INTRO = !!CFG.intro, HAS_OUTRO = !!CFG.outro, P0 = HAS_INTRO ? 1 : 0, PN = CFG.shots.length, OUT = P0 + PN;
+const BRAND = String(CFG.brand || '').toUpperCase();
+const clean = s => String(s).replace(/[.,!?…:;"]+/g, '');
+const norm = s => clean(s).toLowerCase().replace(/[^a-z0-9]/g, '');
+const lineWords = i => LW[i].map(x => x.w);
+const sentenceEnd = ws => { const j = ws.findIndex(x => /(\.|\?|!|…)$/.test(x)); return j < 0 ? ws.length - 1 : j; };
+const brandIdx = ws => ws.findIndex(x => norm(x) === norm(CFG.brand));
+const Pic = ({ k, style }) => LOGO[k] ? html`<img src=${LOGO[k]} style=${{ position: 'absolute', display: 'block', ...style }} />` : null;
+const Prod = ({ style }) => html`<img src=${LOGO.cutout} style=${{ position: 'absolute', display: 'block', filter: 'drop-shadow(0 60px 60px rgba(0,0,0,.6))', ...style }} />`;
+const Sweep = ({ t, a, dur = .9 }) => { const k = p(t, a, dur); return k <= 0 || k >= 1 ? null : html`<div className="fill" style=${{ background: `linear-gradient(105deg, transparent ${lerp(-40, 100, k)}%, rgba(255,255,255,.22) ${lerp(-30, 110, k)}%, transparent ${lerp(-20, 120, k)}%)`, pointerEvents: 'none' }} />`; };
+const Serif = ({ t, w, words, from, size = 110, last = true }) => html`<div style=${{ display: 'flex', justifyContent: 'center', flexWrap: 'wrap', gap: '0 18px', padding: '0 60px' }}>
+  ${words.map((x, j) => html`<${Pop} key=${j} t=${t} a=${w(from + j)}><div className="S" style=${{ fontSize: size, color: last && j === words.length - 1 ? RED : '#f2f2f2' }}>${x}</div><//>`)}</div>`;
+
+/* hook: "Stop scrolling... This is <Brand>."  first sentence slams, then the product rises into a spotlight */
+function Hook({ t, w, d, i }) {
+  const ws = lineWords(i), e1 = sentenceEnd(ws), two = e1 < ws.length - 1, s2 = two ? e1 + 1 : 0;
+  const bi = brandIdx(ws), bAt = bi >= 0 ? w(bi) : w(ws.length - 1);
+  const phaseA = two && t < w(s2) - .05, rise = outExpo(p(t, two ? w(s2) - .05 : 0, .6)), fill = outExpo(p(t, bAt, .45)), beam = p(t, two ? w(s2) - .1 : 0, .4);
+  const rest = ws.slice(s2).map((x, j) => [x, s2 + j]).filter(([, j]) => j !== bi);
+  return html`<div className="fill" style=${{ background: '#060606', overflow: 'hidden' }}>
+    <div className="abs" style=${{ left: 540 - 520, top: -200, width: 1040, height: 1700, background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,.18), transparent 62%)', opacity: beam, clipPath: 'polygon(38% 0, 62% 0, 100% 100%, 0 100%)' }} />
+    ${[560, 880].map((y, j) => html`<div key=${j} className="abs K" style=${{ left: -900, right: -900, top: y, textAlign: 'center', fontSize: 140, color: 'transparent', WebkitTextStroke: '2px rgba(255,255,255,.22)', transform: `translateX(${(j ? 1 : -1) * t * 60}px)` }}>${`${BRAND} `.repeat(4)}</div>`)}
+    <div className="abs K" style=${{ left: 0, right: 0, top: 720, textAlign: 'center', fontSize: fs(BRAND, 160, 1000), color: RED, clipPath: `inset(0 ${100 - fill * 100}% 0 0)` }}>${BRAND}</div>
+    <div className="abs" style=${{ left: 140, right: 140, top: 1500, height: 60, borderRadius: '50%', background: 'rgba(0,0,0,.8)', filter: 'blur(30px)', opacity: rise }} />
+    <${Prod} style=${{ left: 540 - 500, top: 860, width: 1000, transform: `translateY(${lerp(700, 0, rise) + Math.sin(t * 2) * 8}px) rotate(${lerp(-25, -7, rise)}deg)` }} />
+    ${phaseA && html`<div className="fill" style=${{ background: '#060606' }}>
+      ${ws.slice(0, e1 + 1).map((x, j) => html`<div key=${j} className="abs K" style=${{ left: 0, right: 0, top: 640 + j * 320, textAlign: 'center', fontSize: fs(clean(x).toUpperCase(), j ? 200 : 330, 900), color: j ? RED : '#fff', transform: `scale(${lerp(2.4, 1, sp(t, w(j), 22, 9))}) translateX(${Math.sin(t * 90) * 14 * kick(t, w(j), 9)}px)`, opacity: t >= w(j) ? 1 : 0 }}>${clean(x).toUpperCase()}${j === e1 ? '.' : ''}</div>`)}
+    </div>`}
+    ${!phaseA && html`<div className="abs" style=${{ left: 0, right: 0, top: 380 }}><${Serif} t=${t} w=${j => w(rest[j] ? rest[j][1] : 0)} words=${rest.map(r => r[0])} from=${0} size=${150} last=${false} /></div>`}
+    <${Sweep} t=${t} a=${bAt} />
+  </div>`;
+}
+
+/* float: "So light... you'll forget you're wearing them."  product floats in dust, close-up lens */
+function Float({ t, w, d, i, sh }) {
+  const ws = lineWords(i), e1 = sentenceEnd(ws);
+  const bigI = sh.big ? Math.max(0, ws.findIndex(x => norm(x) === norm(sh.big))) : ws.slice(0, e1 + 1).reduce((b, x, j) => clean(x).length > clean(ws[b]).length ? j : b, 0);
+  const lens = outExpo(p(t, w(Math.min(bigI + 1, ws.length - 1)) - .1, .45));
+  return html`<div className="fill" style=${{ background: 'linear-gradient(#101012, #050505)', overflow: 'hidden' }}>
+    ${Array.from({ length: 40 }, (_, j) => html`<div key=${j} className="abs" style=${{ left: rnd(j) * 1080, top: 1920 - ((rnd(j + 3) * 1920 + t * (90 + rnd(j + 7) * 160)) % 2100), width: 4 + rnd(j + 1) * 6, height: 4 + rnd(j + 1) * 6, borderRadius: '50%', background: '#fff', opacity: .15 + rnd(j + 2) * .35 }} />`)}
+    <${Prod} style=${{ left: 540 - 450, top: 790, width: 900, transform: `translateY(${-30 * Math.sin(t * 2.2) - t * 12}px) rotate(${-10 + Math.sin(t * 1.6) * 3}deg)` }} />
+    ${LOGO.detail1 && html`<div className="abs" style=${{ left: 540 - 210, top: 1390, width: 420, height: 420, borderRadius: '50%', overflow: 'hidden', border: '6px solid #fff', transform: `scale(${lens})`, boxShadow: '0 30px 80px rgba(0,0,0,.6)' }}>
+      <img src=${LOGO.detail1} style=${{ position: 'absolute', left: -60, top: -60, width: 540, transform: `scale(${1.1 + t * .05})` }} /></div>`}
+    <div className="abs" style=${{ left: 0, right: 0, top: 190, textAlign: 'center' }}>
+      ${bigI > 0 && html`<${Serif} t=${t} w=${w} words=${ws.slice(0, bigI)} from=${0} size=${120} last=${false} />`}
+      <${Pop} t=${t} a=${w(bigI)} from="stretch"><div className="K" style=${{ fontSize: fs(clean(ws[bigI]).toUpperCase() + ',', 230) }}>${clean(ws[bigI]).toUpperCase()}<span style=${{ color: RED }}>${/[,.…]$/.test(ws[bigI]) ? ',' : ''}</span></div><//>
+      <div style=${{ marginTop: 10 }}><${Serif} t=${t} w=${w} words=${ws.slice(bigI + 1)} from=${bigI + 1} size=${96} /></div>
+    </div>
+  </div>`;
+}
+
+/* detail: "Grip... that never lets go."  full-bleed close-up, the first word huge */
+function Detail({ t, w, d, i, sh }) {
+  const ws = lineWords(i), g = sp(t, w(0), 20, 8), img = LOGO.detail2 ? 'detail2' : 'hero';
+  return html`<div className="fill" style=${{ background: '#000', overflow: 'hidden' }}>
+    <img src=${LOGO[img]} style=${{ position: 'absolute', left: -560, top: 420, width: 2200, transform: `scale(${1.05 + t * .06}) rotate(-6deg)`, transformOrigin: '40% 50%' }} />
+    <div className="fill" style=${{ background: 'linear-gradient(180deg, rgba(0,0,0,.85) 0%, transparent 30%, transparent 62%, rgba(0,0,0,.9) 100%)' }} />
+    <div className="abs K" style=${{ left: 0, right: 0, top: 170, textAlign: 'center', fontSize: fs(clean(ws[0]).toUpperCase(), 330), color: RED, transform: `scale(${lerp(1.8, 1, g)})`, opacity: t >= w(0) ? 1 : 0, textShadow: '0 20px 60px rgba(0,0,0,.6)' }}>${clean(ws[0]).toUpperCase()}</div>
+    <div className="abs" style=${{ left: 0, right: 0, top: 1500 }}><${Serif} t=${t} w=${w} words=${ws.slice(1)} from=${1} size=${120} /></div>
+  </div>`;
+}
+
+/* colors: "Five colors. Zero chill."  colourway carousel, then the punchline */
+function Colors({ t, w, d, i }) {
+  const ws = lineWords(i), e1 = sentenceEnd(ws), two = e1 < ws.length - 1, cut = two ? w(e1 + 1) - .05 : d * .7;
+  const C = CFG.colors || [], n = Math.max(1, C.length), step = cut / n, k = Math.min(n - 1, Math.floor(t / step)), e = outExpo(clamp((t - k * step) / .22));
+  const att = t >= cut, a2 = outExpo(p(t, cut, .35)), cur = C[k] || { name: '', color: RED };
+  return html`<div className="fill" style=${{ background: '#050505', overflow: 'hidden' }}>
+    <div className="fill" style=${{ filter: att ? `brightness(${lerp(1, .55, a2)})` : 'none', transform: att ? `scale(${lerp(1, 1.08, a2)})` : 'none' }}>
+      ${k > 0 && !att && html`<${Pic} k=${'cw' + (k - 1)} style=${{ left: 0, top: 0, width: W, height: H, objectFit: 'cover', transform: `translateX(${-e * 1080}px)` }} />`}
+      <${Pic} k=${'cw' + k} style=${{ left: 0, top: 0, width: W, height: H, objectFit: 'cover', transform: att ? 'none' : `translateX(${(1 - e) * 1080}px)` }} />
+    </div>
+    ${!att && html`<div className="abs mono" style=${{ left: 80, top: 260, fontSize: 44, fontWeight: 800 }}>${String(k + 1).padStart(2, '0')} <span style=${{ color: '#666' }}>/ ${String(n).padStart(2, '0')}</span></div>
+      <div className="abs K" style=${{ left: 80, top: 330, fontSize: fs(cur.name, 170), color: cur.color, transform: `translateY(${(1 - e) * 60}px)`, opacity: e }}>${cur.name}</div>`}
+    <div className="abs" style=${{ left: 0, right: 0, top: 1450, display: 'flex', justifyContent: 'center', gap: 24 }}>
+      ${ws.slice(0, e1 + 1).map((x, j) => html`<${Pop} key=${j} t=${t} a=${w(j)}><div className="K" style=${{ fontSize: fs(ws.slice(0, e1 + 1).join(' ').toUpperCase(), 110) }}>${x.toUpperCase()}</div><//>`)}
+    </div>
+    ${att && two && html`<div className="abs" style=${{ left: 0, right: 0, top: 230, textAlign: 'center' }}>
+      ${ws.length - e1 > 2 && html`<${Serif} t=${t} w=${w} words=${ws.slice(e1 + 1, ws.length - 1)} from=${e1 + 1} size=${150} last=${false} />`}
+      <${Pop} t=${t} a=${w(ws.length - 1)} from="stretch"><div className="K" style=${{ fontSize: fs(ws[ws.length - 1].toUpperCase(), 260), color: RED }}>${ws[ws.length - 1].toUpperCase()}</div><//></div>`}
+  </div>`;
+}
+
+/* end: "<Brand>... Move different."  hero plate, brand title, tagline */
+function End({ t, w, d, i, sh }) {
+  const ws = lineWords(i), bi = brandIdx(ws), tag = ws.slice(bi + 1), a = outExpo(p(t, 0, .6)), m = outExpo(p(t, w(bi + 1), .4));
+  return html`<div className="fill" style=${{ background: '#050505', overflow: 'hidden' }}>
+    <${Pic} k="hero" style=${{ left: 0, top: 0, width: W, height: H, objectFit: 'cover', transform: `scale(${lerp(1.25, 1.05, a) + t * .02})`, opacity: a }} />
+    <div className="fill" style=${{ background: 'linear-gradient(180deg, rgba(0,0,0,.75) 0%, transparent 28%, transparent 70%, rgba(0,0,0,.85) 100%)' }} />
+    <div className="abs K" style=${{ left: 0, right: 0, top: 230, textAlign: 'center', fontSize: fs(BRAND, 190, 960), letterSpacing: lerp(.3, -.02, a) + 'em', opacity: a }}>${BRAND}</div>
+    <div className="abs" style=${{ left: 540 - 160, top: 400, width: 320, height: 8, background: RED, transform: `scaleX(${a})` }} />
+    ${tag.length > 0 && html`<div className="abs" style=${{ left: 0, right: 0, top: 1420, textAlign: 'center', opacity: t >= w(bi + 1) ? 1 : 0, transform: `translateY(${lerp(80, 0, m)}px)` }}>
+      <div className="S" style=${{ fontSize: fs(tag.join(' '), 150, 1700) }}>${tag.slice(0, -1).join(' ')} <span style=${{ color: RED }}>${tag[tag.length - 1]}</span></div>
+      <div className="mono" style=${{ marginTop: 30, fontSize: 34, letterSpacing: '.35em', color: '#bbb', fontWeight: 700 }}>${sh.badge || 'NEW DROP'}</div></div>`}
+    <${Sweep} t=${t} a=${.1} dur=${1.1} />
+  </div>`;
+}
+const KIND = { hook: Hook, float: Float, detail: Detail, colors: Colors, end: End };
+
+/* your own line before the promo: the words pop, the video card rises with a play button */
+function Intro({ t, w }) {
+  const ws = lineWords(0), hi = norm(CFG.intro.highlight || '');
+  return html`<div className="fill" style=${{ background: INK }}>
+    <div className="abs" style=${{ left: 70, right: 70, top: 260, display: 'flex', flexWrap: 'wrap', gap: '6px 26px' }}>
+      ${ws.map((s, j) => html`<${Pop} key=${j} t=${t} a=${w(j)} from="up"><div className="K" style=${{ fontSize: j === ws.length - 1 ? 120 : 100, color: hi && norm(s) === hi ? RED : '#fff' }}>${s}</div><//>`)}
+    </div>
+  </div>`;
+}
+/* your call to action after the promo: the keyword lands in a pill */
+function Outro({ t, w }) {
+  const ws = lineWords(OUT), ki = Math.max(0, ws.findIndex(x => norm(x) === norm(CFG.outro.keyword))), pill = sp(t, w(ki), 16, 6);
+  return html`<div className="abs" style=${{ left: 0, right: 0, top: 1130 }}>
+    <div style=${{ display: 'flex', justifyContent: 'center', gap: 22, flexWrap: 'wrap', padding: '0 60px' }}>
+      ${ws.slice(0, ki).map((s, j) => html`<${Pop} key=${j} t=${t} a=${w(j)}><div className="K" style=${{ fontSize: 110 }}>${s}</div><//>`)}
+    </div>
+    <div style=${{ display: 'flex', justifyContent: 'center', marginTop: 24 }}><div className="K" style=${{ fontSize: fs(CFG.outro.keyword, 150, 760), background: RED, color: '#fff', padding: '.12em .32em .08em', borderRadius: 34, transform: `scale(${pill}) rotate(${lerp(-12, -3, pill)}deg)`, boxShadow: `0 30px 90px ${RED}88` }}>${CFG.outro.keyword.toUpperCase()}</div></div>
+    <div style=${{ marginTop: 34 }}><${Serif} t=${t} w=${w} words=${ws.slice(ki + 1)} from=${ki + 1} size=${96} /></div>
+    ${CFG.outro.handle && html`<div style=${{ textAlign: 'center', marginTop: 40, font: '700 40px Inter', color: '#8a8a8a', opacity: p(t, w(Math.min(ws.length - 1, ki + 3)), .3) }}>${CFG.outro.handle}</div>`}
+  </div>`;
+}
+
+function PromoAt({ tt }) {   // tt = absolute time, clamped into the promo shots
+  let i = P0; for (let k = P0; k < P0 + PN; k++) if (START[k] <= tt) i = k;
+  const lt = Math.max(0, tt - START[i]), d = END(i) - START[i], wordAt = j => (LW[i][Math.min(Math.max(0, j), LW[i].length - 1)].s - START[i]);
+  const sh = CFG.shots[i - P0], P = KIND[sh.type] || Float, tr = ['zoom', 'whip', 'whipL', 'zoom', 'flash'][(i - P0) % 5], e = outExpo(p(lt, 0, .3)), id = 'ptr';
+  let style = {}, bx = 0, by = 0;
+  if (i > P0 && tr === 'whip') { style.transform = `translateY(${lerp(700, 0, e)}px)`; by = (1 - e) * 60; }
+  if (i > P0 && tr === 'whipL') { style.transform = `translateX(${lerp(900, 0, e)}px)`; bx = (1 - e) * 70; }
+  if (i > P0 && tr === 'zoom') { style.transform = `scale(${lerp(1.4, 1, e)})`; bx = by = (1 - e) * 16; }
+  const flash = i > P0 && tr === 'flash' ? kick(lt, 0, 20) * .7 : 0;
+  return html`<div className="fill" style=${{ overflow: 'hidden', background: '#000' }}>
+    <div className="fill" style=${{ ...style, filter: blurred(id, bx, by) }}><${Blur} id=${id} x=${bx} y=${by} /><${P} t=${lt} w=${wordAt} d=${d} i=${i} sh=${sh} /></div>
+    <div className="fill" style=${{ background: '#fff', opacity: flash }} />
+  </div>`;
+}
+function Inner({ t }) {
+  let i = 0; for (let k = 0; k < NL; k++) if (START[k] <= t) i = k;
+  const lt = t - START[i], wordAt = j => (LW[i][Math.min(Math.max(0, j), LW[i].length - 1)].s - START[i]);
+  const inIntro = HAS_INTRO && i === 0, inOutro = HAS_OUTRO && i === OUT;
+  // the promo is a video card: it rises at the end of your intro, goes full screen, and shrinks back for your CTA
+  const rise = inIntro ? outExpo(p(t, LW[0][Math.max(0, LW[0].length - 2)].s, .5)) : 1;
+  const grow = !inIntro && !inOutro ? (HAS_INTRO ? inOut(p(t, START[P0], .45)) : 1) : 0;
+  const full = inOutro ? 1 - outExpo(p(lt, 0, .5)) : grow;
+  const s = lerp(.5, 1, full), y = lerp(inOutro ? -420 : 470, 0, full) + (inIntro ? lerp(1300, 0, rise) : 0);
+  const promoT = inIntro ? START[P0] + 1.9 : inOutro ? START[OUT] - .001 + (t - START[OUT]) * .5 : t;
+  const press = inIntro ? kick(t, START[P0] - .25, 12) : 0;
+  const hand = `translate(${(Math.sin(t * .9) * 3).toFixed(2)}px,${(Math.cos(t * .7) * 3).toFixed(2)}px)`;
+  return html`<div className="fill" style=${{ background: INK }}>
+    ${inIntro && html`<${Intro} t=${lt} w=${wordAt} />`}
+    ${(!inIntro || rise > 0) && html`<div className="fill" style=${{ transform: `${hand} translateY(${y}px) scale(${s * (1 - press * .04)})`, transformOrigin: '50% 50%' }}>
+      <div className="fill" style=${{ borderRadius: lerp(46, 0, full) / s, overflow: 'hidden', boxShadow: full < .99 ? '0 50px 120px rgba(0,0,0,.7), 0 0 0 4px rgba(255,255,255,.12)' : 'none' }}>
+        <${PromoAt} tt=${promoT} />
+        ${inIntro && html`<div className="fill" style=${{ display: 'grid', placeItems: 'center', background: 'rgba(0,0,0,.25)' }}><div style=${{ width: 220, height: 220, borderRadius: '50%', background: 'rgba(255,255,255,.92)', display: 'grid', placeItems: 'center', transform: `scale(${1 + press * .3})` }}><svg width="90" height="90" viewBox="0 0 10 10"><polygon points="2.5,1.5 9,5 2.5,8.5" fill=${INK} /></svg></div></div>`}
+      </div>
+    </div>`}
+    ${inOutro && html`<${Outro} t=${lt} w=${wordAt} />`}
+  </div>`;
+}
+
+const GRAIN = (() => { const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'); const d = x.createImageData(256, 256); for (let i = 0; i < d.data.length; i += 4) { const v = Math.random() * 255; d.data[i] = d.data[i + 1] = d.data[i + 2] = v; d.data[i + 3] = 22; } x.putImageData(d, 0, 0); return c.toDataURL(); })();
+
+function Reel({ t }) {
+  return html`<div className="fill">
+    <${Inner} t=${t} />
+    <div className="fill" style=${{ backgroundImage: `url(${GRAIN})`, backgroundPosition: `${Math.floor(rnd(Math.floor(t * 24)) * 256)}px ${Math.floor(rnd(Math.floor(t * 24) + 9) * 256)}px`, pointerEvents: 'none', mixBlendMode: 'overlay', opacity: .9 }} />
+    <div className="fill" style=${{ background: 'radial-gradient(ellipse at 50% 48%, transparent 58%, rgba(0,0,0,.45) 100%)', pointerEvents: 'none' }} />
+  </div>`;
+}
+
+function App() {
+  const T = useMotionValue(0); const [t, setT] = useState(0);
+  useMotionValueEvent(T, 'change', v => setT(v));
+  const [scale, setScale] = useState(1); const audio = useRef(null); const st = useRef({ playing: !RENDER, clock: 0 });
+  useEffect(() => { const f = () => setScale(Math.min(innerWidth / W, innerHeight / H)); f(); addEventListener('resize', f); return () => removeEventListener('resize', f); }, []);
+  useEffect(() => {
+    if (RENDER) return; let last = performance.now(), raf;
+    const tick = now => { const dt = (now - last) / 1000; last = now; const s = st.current;
+      if (s.playing) { const au = audio.current; s.clock = au && !au.paused && !au.muted ? au.currentTime : s.clock + dt; if (s.clock > TOTAL + .6) { s.clock = 0; if (au) au.currentTime = 0; } T.set(Math.min(s.clock, TOTAL - .001)); }
+      raf = requestAnimationFrame(tick); };
+    raf = requestAnimationFrame(tick); return () => cancelAnimationFrame(raf);
+  }, []);
+  useEffect(() => {
+    const raf2 = () => new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+    window.__hype = { W, H, fps: 30, duration: TOTAL, audioPath: AUDIO_PATH, scenes: START.map((s, i) => ({ type: 'shot' + i, start: s, dur: END(i) - s })),
+      ready: (async () => { await Promise.all(['900 60px Archivo', '700 60px Inter', '500 60px Inter', '800 60px "JetBrains Mono"', 'italic 400 60px "Instrument Serif"'].map(f => document.fonts.load(f).catch(() => {}))); await document.fonts.ready; return true; })(),
+      async seek(x) { T.set(x); await raf2(); await Promise.all([...document.querySelectorAll('img')].map(i => i.decode().catch(() => {}))); await raf2(); } };
+  }, []);
+  const toggle = () => { const s = st.current; s.playing = !s.playing; const au = audio.current; if (au) s.playing ? au.play().catch(() => {}) : au.pause(); };
+  const sound = () => { const au = audio.current; if (!au) return; au.muted = !au.muted; if (!au.muted) { au.currentTime = Math.min(st.current.clock, TOTAL); au.play().catch(() => {}); } };
+  return html`<div className="stage" style=${{ width: W, height: H, transform: `scale(${scale})` }} onClick=${RENDER ? null : toggle}><${Reel} t=${t} /></div>
+    ${AUDIO && !RENDER && html`<audio ref=${audio} src=${AUDIO} muted preload="auto" />`}
+    ${!RENDER && html`<div className="ui"><button onClick=${toggle}>Play / Pause</button>${AUDIO && html`<button onClick=${sound}>Sound</button>`}</div>`}`;
+}
+ReactDOM.createRoot(root).render(html`<${App} />`);
+})();
+</script>
+</body>
+</html>
